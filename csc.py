@@ -158,21 +158,13 @@ def open_files(input_file, output_file):
 
 # Perform lexical analysis
 def lex():
-	global c
 	state = 0
-	ERROR = -1
 	OK    = -2
 	unget = False
-	falseprocess = False
 	
-	# check buffer for existing tokens
-	if ''.join(buffer) in tokens.keys():
-		falseprocess = True
-
-	while state != ERROR and state != OK:
-		if falseprocess == False:
-			c = infile.read(1)
-			buffer.append(c)
+	while state != OK:
+		c = infile.read(1)
+		buffer.append(c)
 		if state == 0:
 			if c.isalpha():
 				state = 1
@@ -218,50 +210,35 @@ def lex():
 			elif c.isspace():
 				state = 0
 			else:
-				perror_exit(2, '\'%c\': Invalid character in program' % c)
-				state = ERROR
+				perror_exit(2, 'Invalid character \'%c\' in program' % c)
 		elif state == 1:
-			if c.isalnum():
-				state = 1
-			else:
+			if not c.isalnum():
 				unget = True
 				state = OK
 		elif state == 2:
-			if c.isdigit():
-				state = 2
-			else:
+			if not c.isdigit():
 				unget = True
 				state = OK
 		elif state == 3:
-			if c == '=':
-				state = OK
-			elif c == '>':
-				state = OK
-			else:
+			if c != '=' and c != '>':
 				unget = True
-				state = OK
+			state = OK
 		elif state == 4:
-			if c == '=':
-				state = OK
-			else:
+			if c != '=':
 				unget = True
-				state = OK
+			state = OK
 		elif state == 5:
-			if c == '=':
-				state = OK
-			else:
+			if c != '=':
 				unget = True
-				state = OK
+			state = OK
 		elif state == 6:
 			if c == '*':
 				state = 7
 			else:
 				perror_exit(2, 'Expected \'*\' after \'\\\'' % c)
-				state = ERROR
 		elif state == 7:
 			if c == '': # EOF
-				perror_exit(2, 'Unterminated comment; reached end of file (EOF)' % c)
-				state = ERROR
+				perror_exit(2, 'Unterminated comment; reached end of file (EOF)')
 			elif c == '*':
 				state = 8
 		elif state == 8:
@@ -269,25 +246,25 @@ def lex():
 				del buffer[:]
 				state = 0
 			else:
-				perror_exit(2, 'Unterminated comment' % c)
-				state = ERROR
+				perror_exit(2, 'Unterminated comment')
 		if c.isspace():
 			del buffer[-1]
 			unget = False
-		if state == OK:
-			if unget == True:
-				del buffer[-1]
-			if ''.join(buffer) not in tokens.keys():
-				if ''.join(buffer).isdigit():
-					retval = TokenType.NUMBER, int(''.join(buffer))
-				else:
-					retval = TokenType.IDENT, ''.join(buffer)
-			else:
-				retval = (tokens[''.join(buffer)],)
-			del buffer[:]
-			if unget == True:
-				buffer.append(c)
-			return retval
+
+	if unget == True:
+		del buffer[-1]
+		infile.seek(infile.tell() - 1)
+
+	buff_cont = ''.join(buffer)
+	if buff_cont not in tokens.keys():
+		if buff_cont.isdigit():
+			retval = (TokenType.NUMBER, int(buff_cont))
+		else:
+			retval = (TokenType.IDENT, buff_cont)
+	else:
+		retval = (tokens[buff_cont],)
+	del buffer[:]
+	return retval
 
 
 # Print program usage and exit with exit code: ec
