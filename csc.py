@@ -158,12 +158,21 @@ def open_files(input_file, output_file):
 
 # Perform lexical analysis
 def lex():
+	global c
 	state = 0
 	ERROR = -1
 	OK    = -2
+	unget = False
+	falseprocess = False
+	
+	# check buffer for existing tokens
+	if ''.join(buffer) in tokens.keys():
+		falseprocess = True
+
 	while state != ERROR and state != OK:
-		c = infile.read(1)
-		buffer.append(c)
+		if falseprocess == False:
+			c = infile.read(1)
+			buffer.append(c)
 		if state == 0:
 			if c.isalpha():
 				state = 1
@@ -177,6 +186,16 @@ def lex():
 				state = 5
 			elif c == '\\':
 				state = 6
+			elif c == '+':
+				state = OK
+			elif c == '-':
+				state = OK
+			elif c == '*':
+				state = OK
+			elif c == '/':
+				state = OK
+			elif c == '=':
+				state = OK
 			elif c == ',':
 				state = OK
 			elif c == ';':
@@ -199,16 +218,19 @@ def lex():
 			elif c.isspace():
 				state = 0
 			else:
+				perror_exit(2, '\'%c\': Invalid character in program' % c)
 				state = ERROR
 		elif state == 1:
 			if c.isalnum():
 				state = 1
 			else:
+				unget = True
 				state = OK
 		elif state == 2:
 			if c.isdigit():
 				state = 2
 			else:
+				unget = True
 				state = OK
 		elif state == 3:
 			if c == '=':
@@ -216,32 +238,55 @@ def lex():
 			elif c == '>':
 				state = OK
 			else:
+				unget = True
 				state = OK
 		elif state == 4:
 			if c == '=':
 				state = OK
 			else:
+				unget = True
+				state = OK
+		elif state == 5:
+			if c == '=':
+				state = OK
+			else:
+				unget = True
 				state = OK
 		elif state == 6:
 			if c == '*':
 				state = 7
 			else:
+				perror_exit(2, 'Expected \'*\' after \'\\\'' % c)
 				state = ERROR
 		elif state == 7:
 			if c == '': # EOF
+				perror_exit(2, 'Unterminated comment; reached end of file (EOF)' % c)
 				state = ERROR
 			elif c == '*':
 				state = 8
 		elif state == 8:
 			if c == '\\':
+				del buffer[:]
 				state = 0
 			else:
+				perror_exit(2, 'Unterminated comment' % c)
 				state = ERROR
 		if c.isspace():
 			del buffer[-1]
+			unget = False
 		if state == OK:
-			retval = tokens[''.join(buffer)]
+			if unget == True:
+				del buffer[-1]
+			if ''.join(buffer) not in tokens.keys():
+				if ''.join(buffer).isdigit():
+					retval = TokenType.NUMBER, int(''.join(buffer))
+				else:
+					retval = TokenType.IDENT, ''.join(buffer)
+			else:
+				retval = (tokens[''.join(buffer)],)
 			del buffer[:]
+			if unget == True:
+				buffer.append(c)
 			return retval
 
 
@@ -300,7 +345,10 @@ def main(argv):
 		tk = lex()
 		if tk == None:
 			break
-		print(tk)
+		if len(tk) == 1:
+			print(tk[0])
+		else:
+			print(tk[1])
 
 
 if __name__ == "__main__":
