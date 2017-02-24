@@ -26,14 +26,10 @@ from enum import Enum
 
 __version__='0.0.1'
 
-keywords = ['and','declare','do','else','enddeclare','exit','procedure',\
-	'function','print','call','if','in','inout','not','select','program',\
-	'or','return','while','default']
-buffer   = []
 
 class TokenType(Enum):
 	IDENT      = 0 
-	NUMDER     = 1
+	NUMBER     = 1
 	# Brackets
 	LPAREN     = 2
 	RPAREN     = 3
@@ -67,7 +63,7 @@ class TokenType(Enum):
 	ENDDECLSYM = 26
 	DOSYM      = 27
 	IFSYM      = 28
-	ELSESIM    = 29
+	ELSESYM    = 29
 	EXITSYM    = 30
 	PROCSYM    = 31
 	FUNCSYM    = 32
@@ -80,6 +76,54 @@ class TokenType(Enum):
 	RETURNSYM  = 39
 	WHILESYM   = 40
 	DEFAULTSYM = 41
+
+
+keywords = [
+	'and','declare','do','else','enddeclare','exit','procedure',
+	'function','print','call','if','in','inout','not','select','program',
+	'or','return','while','default']
+tokens   = {
+	'(':TokenType.LPAREN,
+	')':TokenType.RPAREN,
+	'{':TokenType.LBRACE,
+	'}':TokenType.RBRACE,
+	'[':TokenType.LBRACKET,
+	']':TokenType.RBRACKET,
+	',':TokenType.COMMA,
+	':':TokenType.COLON,
+	';':TokenType.SEMICOLON,
+	'<':TokenType.LSS,
+	'>':TokenType.GTR,
+	'<=':TokenType.LEQ,
+	'>=':TokenType.GEQ,
+	'=':TokenType.EQL,
+	'<>':TokenType.NEQ,
+	':=':TokenType.BECOMES,
+	'+':TokenType.PLUS,
+	'-':TokenType.MINUS,
+	'*':TokenType.TIMES,
+	'/':TokenType.SLASH,
+	'and':TokenType.ANDSYM,
+	'not':TokenType.NOTSYM,
+	'or':TokenType.ORSYM,
+	'declare':TokenType.DECLARESYM,
+	'enddeclare':TokenType.ENDDECLSYM,
+	'do':TokenType.DOSYM,
+	'if':TokenType.IFSYM,
+	'else':TokenType.ELSESYM,
+	'exit':TokenType.EXITSYM,
+	'procedure':TokenType.PROCSYM,
+	'function':TokenType.FUNCSYM,
+	'print':TokenType.PRINTSYM,
+	'call':TokenType.CALLSYM,
+	'in':TokenType.INSYM,
+	'inout':TokenType.INOUTSYM,
+	'select':TokenType.SELECTSYM,
+	'program':TokenType.PROGRAMSYM,
+	'return':TokenType.RETURNSYM,
+	'while':TokenType.WHILESYM,
+	'default':TokenType.DEFAULTSYM}
+buffer   = []
 
 
 # Print message to stderr and exit
@@ -98,22 +142,28 @@ def pwarn(*args, **kwargs):
 	print('[WARNING]', *args, file=sys.stderr, **kwargs)
 
 
-# Perform lexical analysis
-def lex(input_file):
+# Open files
+def open_files(input_file, output_file):
+	global infile
+	global outfile
 	try:
-		infile = open(input_file,'r')
+		infile = open(input_file, 'r')
+		outfile = open(output_file, 'w')
 	except OSError as oserr:
 		if oserr.filename != None:
 			perror_exit(oserr.errno, oserr.filename + ':', oserr.strerror)
 		else:
 			perror_exit(oserr.errno, oserr)
 
+
+# Perform lexical analysis
+def lex():
 	state = 0
 	ERROR = -1
 	OK    = -2
-	c = infile.read(1)
-	buffer.append(c)
 	while state != ERROR and state != OK:
+		c = infile.read(1)
+		buffer.append(c)
 		if state == 0:
 			if c.isalpha():
 				state = 1
@@ -145,6 +195,9 @@ def lex(input_file):
 				state = OK
 			elif c == '': # EOF
 				state = OK
+				return None
+			elif c.isspace():
+				state = 0
 			else:
 				state = ERROR
 		elif state == 1:
@@ -184,8 +237,12 @@ def lex(input_file):
 				state = 0
 			else:
 				state = ERROR
-		c = infile.read(1)
-		buffer.append(c)
+		if c.isspace():
+			del buffer[-1]
+		if state == OK:
+			retval = tokens[''.join(buffer)]
+			del buffer[:]
+			return retval
 
 
 # Print program usage and exit with exit code: ec
@@ -238,7 +295,12 @@ def main(argv):
 	if os.path.isfile(output_file):
 		pwarn(output_file + ': exists and will be overwritten!')
 
-	lex(input_file)
+	open_files(input_file, output_file)
+	while True:
+		tk = lex()
+		if tk == None:
+			break
+		print(tk)
 
 
 if __name__ == "__main__":
