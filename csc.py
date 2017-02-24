@@ -22,8 +22,64 @@
 
 
 import sys, getopt, os
+from enum import Enum
 
 __version__='0.0.1'
+
+keywords = ['and','declare','do','else','enddeclare','exit','procedure',\
+	'function','print','call','if','in','inout','not','select','program',\
+	'or','return','while','default']
+buffer   = []
+
+class TokenType(Enum):
+	IDENT      = 0 
+	NUMDER     = 1
+	# Brackets
+	LPAREN     = 2
+	RPAREN     = 3
+	LBRACE     = 4
+	RBRACE     = 5
+	LBRACKET   = 6
+	RBRACKET   = 7
+	# Other punctuation marks
+	COMMA      = 8
+	COLON      = 9
+	SEMICOLON  = 10
+	# Relational Operators
+	LSS        = 11
+	GTR        = 12
+	LEQ        = 13
+	GEQ        = 14
+	EQL        = 15
+	NEQ        = 16
+	# Assignment
+	BECOMES    = 17
+	# Arithmetic Operators
+	PLUS       = 18
+	MINUS      = 19
+	TIMES      = 20
+	SLASH      = 21
+	# Keywords
+	ANDSYM     = 22
+	NOTSYM     = 23
+	ORSYM      = 24
+	DECLARESYM = 25
+	ENDDECLSYM = 26
+	DOSYM      = 27
+	IFSYM      = 28
+	ELSESIM    = 29
+	EXITSYM    = 30
+	PROCSYM    = 31
+	FUNCSYM    = 32
+	PRINTSYM   = 33
+	CALLSYM    = 34
+	INSYM      = 35
+	INOUTSYM   = 36
+	SELECTSYM  = 37
+	PROGRAMSYM = 38
+	RETURNSYM  = 39
+	WHILESYM   = 40
+	DEFAULTSYM = 41
 
 
 # Print message to stderr and exit
@@ -52,11 +108,84 @@ def lex(input_file):
 		else:
 			perror_exit(oserr.errno, oserr)
 
+	state = 0
+	ERROR = -1
+	OK    = -2
 	c = infile.read(1)
-	while c:
-		if c != '\n' and not c.isspace():
-			print("%c" % c)
+	buffer.append(c)
+	while state != ERROR and state != OK:
+		if state == 0:
+			if c.isalpha():
+				state = 1
+			elif c.isdigit():
+				state = 2
+			elif c == '<':
+				state = 3
+			elif c == '>':
+				state = 4
+			elif c == ':':
+				state = 5
+			elif c == '\\':
+				state = 6
+			elif c == ',':
+				state = OK
+			elif c == ';':
+				state = OK
+			elif c == '{':
+				state = OK
+			elif c == '}':
+				state = OK
+			elif c == '(':
+				state = OK
+			elif c == ')':
+				state = OK
+			elif c == '[':
+				state = OK
+			elif c == ']':
+				state = OK
+			elif c == '': # EOF
+				state = OK
+			else:
+				state = ERROR
+		elif state == 1:
+			if c.isalnum():
+				state = 1
+			else:
+				state = OK
+		elif state == 2:
+			if c.isdigit():
+				state = 2
+			else:
+				state = OK
+		elif state == 3:
+			if c == '=':
+				state = OK
+			elif c == '>':
+				state = OK
+			else:
+				state = OK
+		elif state == 4:
+			if c == '=':
+				state = OK
+			else:
+				state = OK
+		elif state == 6:
+			if c == '*':
+				state = 7
+			else:
+				state = ERROR
+		elif state == 7:
+			if c == '': # EOF
+				state = ERROR
+			elif c == '*':
+				state = 8
+		elif state == 8:
+			if c == '\\':
+				state = 0
+			else:
+				state = ERROR
 		c = infile.read(1)
+		buffer.append(c)
 
 
 # Print program usage and exit with exit code: ec
