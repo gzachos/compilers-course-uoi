@@ -260,7 +260,7 @@ def lex():
 		if buff_cont.isdigit():
 			retval = (TokenType.NUMBER, int(buff_cont))
 		else:
-			retval = (TokenType.IDENT, buff_cont)
+			retval = (TokenType.IDENT, buff_cont[:30])
 	else:
 		retval = (tokens[buff_cont],)
 	del buffer[:]
