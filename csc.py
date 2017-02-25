@@ -144,11 +144,12 @@ def pwarn(*args, **kwargs):
 
 # Open files
 def open_files(input_file, output_file):
-	global infile
-	global outfile
+	global infile, outfile, lineno, charno
+	lineno = 1
+	charno = 0
 	try:
-		infile = open(input_file, 'r')
-		outfile = open(output_file, 'w')
+		infile = open(input_file, 'r', encoding='utf-8')
+		outfile = open(output_file, 'w', encoding='utf-8')
 	except OSError as oserr:
 		if oserr.filename != None:
 			perror_exit(oserr.errno, oserr.filename + ':', oserr.strerror)
@@ -158,13 +159,15 @@ def open_files(input_file, output_file):
 
 # Perform lexical analysis
 def lex():
+	global lineno, charno
+	cc = cl = -1
 	state = 0
 	OK    = -2
 	unget = False
-	
 	while state != OK:
 		c = infile.read(1)
 		buffer.append(c)
+		charno += 1
 		if state == 0:
 			if c.isalpha():
 				state = 1
@@ -210,7 +213,8 @@ def lex():
 			elif c.isspace():
 				state = 0
 			else:
-				perror_exit(2, 'Invalid character \'%c\' in program' % c)
+				perror_exit(2, '%s:%d:%d: Invalid character \'%c\' in program' %
+					(infile.name, lineno, charno, c))
 		elif state == 1:
 			if not c.isalnum():
 				unget = True
@@ -234,11 +238,15 @@ def lex():
 		elif state == 6:
 			if c == '*':
 				state = 7
+				cl = lineno
+				cc = charno - 1
 			else:
-				perror_exit(2, 'Expected \'*\' after \'\\\'' % c)
+				perror_exit(2, '%s:%d:%d: Expected \'*\' after \'\\\'' %
+					(infile.name, lineno, charno, c))
 		elif state == 7:
 			if c == '': # EOF
-				perror_exit(2, 'Unterminated comment; reached end of file (EOF)')
+				perror_exit(2, '%s:%d:%d: Unterminated comment' %
+					(infile.name, cl, cc))
 			elif c == '*':
 				state = 8
 		elif state == 8:
@@ -246,14 +254,18 @@ def lex():
 				del buffer[:]
 				state = 0
 			else:
-				perror_exit(2, 'Unterminated comment')
+				state = 7
 		if c.isspace():
 			del buffer[-1]
 			unget = False
+			if c == '\n':
+				lineno += 1
+				charno = 0
 
 	if unget == True:
 		del buffer[-1]
 		infile.seek(infile.tell() - 1)
+		charno -= 1
 
 	buff_cont = ''.join(buffer)
 	if buff_cont not in tokens.keys():
