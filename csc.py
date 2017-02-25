@@ -27,6 +27,15 @@ from enum import Enum
 __version__='0.0.1'
 
 
+class clr:
+	GRN    = '\033[92m'
+	WRN    = '\033[95m'
+	ERR    = '\033[91m'
+	END    = '\033[0m'
+	BLD    = '\033[1m'
+	UNDRLN = '\033[4m'
+	
+
 class TokenType(Enum):
 	IDENT      = 0 
 	NUMBER     = 1
@@ -128,18 +137,30 @@ buffer   = []
 
 # Print message to stderr and exit
 def perror_exit(ec, *args, **kwargs):
-	print('[ERROR]', *args, file=sys.stderr, **kwargs)
+	print('[' + clr.ERR + 'ERROR' + clr.END + ']',
+		*args, file=sys.stderr, **kwargs)
 	sys.exit(ec)
 
 
 # Print error message to stderr
 def perror(*args, **kwargs):
-	print('[ERROR]', *args, file=sys.stderr, **kwargs)
+	print('[' + clr.ERR + 'ERROR' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 
 
 # Print warning to stderr
 def pwarn(*args, **kwargs):
-	print('[WARNING]', *args, file=sys.stderr, **kwargs)
+	print('[' + clr.WRN + 'WARNING' + clr.END + ']', *args, file=sys.stderr, **kwargs)
+
+
+# Print line #lineno to stderr
+def perror_line(lineno, charno):
+	currchar = infile.tell()
+	infile.seek(0)
+	for index, line in enumerate(infile):
+		if index == lineno-1:
+			print(" ", line.replace('\t', ' ').replace('\n', ''), file=sys.stderr)
+			print(clr.GRN + " " * (charno + 1) + '^' + clr.END, file=sys.stderr)
+	infile.seek(currchar)
 
 
 # Open files
@@ -213,8 +234,10 @@ def lex():
 			elif c.isspace():
 				state = 0
 			else:
-				perror_exit(2, '%s:%d:%d: Invalid character \'%c\' in program' %
-					(infile.name, lineno, charno, c))
+				perror(clr.BLD + '%s:%d:%d:' % (infile.name, lineno, charno) +
+					clr.END, 'Invalid character \'%c\' in program' % c)
+				perror_line(lineno, charno)
+				sys.exit(1)
 		elif state == 1:
 			if not c.isalnum():
 				unget = True
@@ -241,12 +264,16 @@ def lex():
 				cl = lineno
 				cc = charno - 1
 			else:
-				perror_exit(2, '%s:%d:%d: Expected \'*\' after \'\\\'' %
-					(infile.name, lineno, charno, c))
+				perror(clr.BLD + '%s:%d:%d:' % (infile.name, lineno, charno) +
+					clr.END, 'Expected \'*\' after \'\\\'')
+				perror_line(lineno, charno)
+				sys.exit(2)
 		elif state == 7:
 			if c == '': # EOF
-				perror_exit(2, '%s:%d:%d: Unterminated comment' %
-					(infile.name, cl, cc))
+				perror(clr.BLD + '%s:%d:%d:' % (infile.name, cl, cc) +
+					clr.END, 'Unterminated comment')
+				perror_line(cl, cc)
+				sys.exit(2)
 			elif c == '*':
 				state = 8
 		elif state == 8:
