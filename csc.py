@@ -135,7 +135,7 @@ tokens   = {
 	'default':TokenType.DEFAULTSYM}
 
 buffer   = []
-
+token    = ()
 
 # Print error message to stderr and exit
 def perror_exit(ec, *args, **kwargs):
@@ -314,6 +314,54 @@ def lex():
 	return retval
 
 
+def program():
+	global token
+	token = lex()
+	if token[0] == TokenType.PROGRAMSYM:
+		token = lex()
+		if token[0] == TokenType.IDENT:
+			token = lex()
+			block();
+		else:
+			perror_exit(3, 'Expected program name but \'%s\' was found instead' % token[1])
+	else:
+		perror_exit(3, 'Missing \'program\' keyword')
+
+
+def block():
+	global token
+	if token[0] == TokenType.LBRACE:
+		token = lex()
+		declarations()
+	#	subprograms()
+	#	sequence()
+		if token[0] != TokenType.RBRACE:
+			perror_exit(3, 'Expected \'}\' but \'%s\' was found instead' % token[1])
+	else:
+		perror_exit(3, 'Expected \'{\' but \'%s\' was found instead' % token[1])
+
+
+def declarations():
+	global token
+	if token[0] == TokenType.DECLARESYM:
+		token = lex()
+		varlist()
+		if token[0] != TokenType.ENDDECLSYM:
+			perror_exit(3, 'Expected \'enddeclare\' but \'%s\' was found instead' % token[1])
+		token = lex()
+
+
+def varlist():
+	global token
+	if token[0] == TokenType.IDENT:
+		token = lex()
+		while token[0] == TokenType.COMMA:
+			token = lex()
+			if token[0] != TokenType.IDENT:
+				perror_exit(3, 'Expected variable declaration but \'%s\' was found instead' % token[1])
+			token = lex()
+
+
 # Print program usage and exit
 def print_usage(ec=0):
 	print('Usage:  %s [OPTIONS] {-i|--input} INFILE' % __file__)
@@ -370,11 +418,7 @@ def main(argv):
 		pwarn(output_file + ': exists and will be overwritten!')
 
 	open_files(input_file, output_file)
-	while True:
-		tk = lex()
-		if tk == None:
-			break
-		print(tk)
+	program()
 
 
 if __name__ == "__main__":
