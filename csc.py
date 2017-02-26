@@ -85,6 +85,8 @@ class TokenType(Enum):
 	RETURNSYM  = 39
 	WHILESYM   = 40
 	DEFAULTSYM = 41
+	# EOF
+	EOF        = 42
 
 
 keywords = [
@@ -132,7 +134,8 @@ tokens   = {
 	'program':TokenType.PROGRAMSYM,
 	'return':TokenType.RETURNSYM,
 	'while':TokenType.WHILESYM,
-	'default':TokenType.DEFAULTSYM}
+	'default':TokenType.DEFAULTSYM,
+	'EOF':TokenType.EOF}
 
 buffer   = []
 token    = ()
@@ -247,7 +250,7 @@ def lex():
 				state = OK
 			elif c == '': # EOF
 				state = OK
-				return None
+				return (TokenType.EOF, 'EOF')
 			elif c.isspace():
 				state = 0
 			else:
@@ -314,9 +317,23 @@ def lex():
 	return retval
 
 
-def program():
+##############################################################
+#                                                            #
+#           Syntax analyzer related functions                #
+#                                                            #
+##############################################################
+
+
+def syntax_analyzer():
 	global token
 	token = lex()
+	program()
+	if token[0] != TokenType.EOF:
+		perror_exit(3, 'Expected \'EOF\' but \'%s\' was found instead' % token[1])
+
+
+def program():
+	global token
 	if token[0] == TokenType.PROGRAMSYM:
 		token = lex()
 		if token[0] == TokenType.IDENT:
@@ -333,10 +350,11 @@ def block():
 	if token[0] == TokenType.LBRACE:
 		token = lex()
 		declarations()
-	#	subprograms()
-	#	sequence()
+		subprograms()
+		sequence()
 		if token[0] != TokenType.RBRACE:
 			perror_exit(3, 'Expected \'}\' but \'%s\' was found instead' % token[1])
+		token = lex()
 	else:
 		perror_exit(3, 'Expected \'{\' but \'%s\' was found instead' % token[1])
 
@@ -360,6 +378,408 @@ def varlist():
 			if token[0] != TokenType.IDENT:
 				perror_exit(3, 'Expected variable declaration but \'%s\' was found instead' % token[1])
 			token = lex()
+
+
+def subprograms():
+	global token
+	while token[0] == TokenType.PROCSYM or token[0] == TokenType.FUNCSYM:
+		func()
+
+
+def func():
+	global token
+	if token[0] == TokenType.PROCSYM:
+		token = lex()
+		if token[0] == TokenType.IDENT:
+			token = lex()
+			funcbody()
+		else:
+			perror_exit(3, 'Expected procedure name but \'%s\' was found instead' % token[1])
+	elif token[0] == TokenType.FUNCSYM:
+		token = lex()
+		if token[0] == TokenType.IDENT:
+			token = lex()
+			funcbody()
+		else:
+			perror_exit(3, 'Expected function name but \'%s\' was found instead' % token[1])
+	else:
+		perror_exit(3, 'Expected procedure/function declaration but \'%s\' was found instead' % token[1])
+
+
+def funcbody():
+	global token
+	formalpars()
+	block()
+
+
+def formalpars():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+			formalparlist()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def formalparlist():
+	global token
+	formalparitem()
+	while token[0] == TokenType.COMMA:
+		token = lex()
+		formalparitem()
+
+
+def formalparitem():
+	global token
+	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+		token = lex()
+		if token[0] != TokenType.IDENT:
+			perror_exit(3, 'Expected formal parameter name but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		perror_exit(3, 'Expected formal parameter type but \'%s\' was found instead' % token[1])
+
+
+def sequence():
+	global token
+	statement()
+	while token[0] == TokenType.SEMICOLON:
+		token = lex()
+		statement();
+
+
+def brackets_seq():
+	global token
+	if token[0] == TokenType.LBRACE:
+		token = lex()
+		sequence()
+		if token[0] != TokenType.RBRACE:
+			perror_exit(3, 'Expected \'}\' but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		perror_exit(3, 'Expected \'{\' but \'%s\' was found instead' % token[1])
+
+
+def brack_or_stat():
+	global token
+	if token[0] == TokenType.LBRACE:
+		brackets_seq()
+	else:
+		statement()
+
+
+def statement():
+	global token
+	if token[0] == TokenType.IDENT:
+		token = lex()
+		assignment_stat()
+	elif token[0] == TokenType.IFSYM:
+		token = lex()
+		if_stat()
+	elif token[0] == TokenType.DOSYM:
+		token = lex()
+		do_while_stat()
+	elif token[0] == TokenType.WHILESYM:
+		token = lex()
+		while_stat()
+	elif token[0] == TokenType.SELECTSYM:
+		token = lex()
+		select_stat()
+	elif token[0] == TokenType.EXITSYM:
+		token = lex()
+		exit_stat()
+	elif token[0] == TokenType.RETURNSYM:
+		token = lex()
+		return_stat()
+	elif token[0] == TokenType.PRINTSYM:
+		token = lex()
+		print_stat()
+	elif token[0] == TokenType.CALLSYM:
+		token = lex()
+		call_stat()
+
+
+def assignment_stat():
+	global token
+	if token[0] == TokenType.BECOMES:
+		token = lex()
+		expression()
+	else:
+		perror_exit(3, 'Expected \':=\' but \'%s\' was found instead' % token[1])
+
+
+def if_stat():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		condition()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+		brack_or_stat()
+		elsepart()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def elsepart():
+	global token
+	if token[0] == TokenType.ELSESYM:
+		token = lex()
+		brack_or_stat
+
+
+def while_stat():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		condition()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+		brack_or_stat()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def select_stat():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		if token[0] != TokenType.IDENT:
+			token = lex()
+			if token[0] == TokenType.RPAREN:
+				token = lex()
+				while token[0] == TokenType.NUMBER:
+					token = lex()
+					if token[0] == TokenType.SEMICOLON:
+						token = lex()
+						brack_or_stat()
+					else:
+						perror_exit(3, 'Expected \':\' but \'%s\' was found instead' % token[1])
+				if token[0] == TokenType.DEFAULTSYM:
+					token = lex()
+					if token[0] == TokenType.SEMICOLON:
+						token = lex()
+						brack_or_stat()
+					else:
+						perror_exit(3, 'Expected \':\' but \'%s\' was found instead' % token[1])
+				else:
+					perror_exit(3, 'Expected \'default\' but \'%s\' was found instead' % token[1])
+			else:
+				perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		else:
+			perror_exit(3, 'Expected variable identifier but \'%s\' was found instead' % token[1])
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def do_while_stat():
+	global token
+	brack_or_stat()
+	if token[0] == TokenType.WHILESYM:
+		token = lex()
+		if token[0] == TokenType.LPAREN:
+			token = lex()
+			condition()
+			if token[0] != TokenType.RPAREN:
+				perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+			token = lex()
+		else:
+			perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+	else:
+		perror_exit(3, 'Expected \'while\' token but \'%s\' was found instead' % token[1])
+
+
+def exit_stat():
+	global token
+	if token[0] != TokenType.EXITSYM:
+		perror_exit(3, 'Expected \'exit\' token but \'%s\' was found instead' % token[1])
+	token = lex()
+
+
+def return_stat():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		expression()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+		brack_or_stat()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def print_stat():
+	global token
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		expression()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+		brack_or_stat()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
+
+
+def call_stat():
+	global token
+	if token[0] == TokenType.IDENT:
+		token = lex()
+		actualpars()
+	else:
+		perror_exit(3, 'Expected procedure name but \'%s\' was found instead' % token[1])
+
+
+def actualpars():
+	global token
+	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+		actualparlist()
+
+
+def actualparlist():
+	global token
+	actualparitem()
+	while token[0] == TokenType.COMMA:
+		token = lex()
+		actualparitem()
+
+
+def actualparitem():
+	global token
+	if token[0] == TokenType.INSYM:
+		token = lex()
+		expression()
+	elif token[0] == TokenType.INOUTSYM:
+		token = lex()
+		if token[0] != TokenType.IDENT:
+			perror_exit(3, 'Expected variable identifier but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		perror_exit(3, 'Expected parameter type but \'%s\' was found instead' % token[1])
+
+
+def condition():
+	global token
+	boolterm()
+	while token[0] == TokenType.ORSYM:
+		token = lex()
+		boolterm()
+
+
+def boolterm():
+	global token
+	boolfactor()
+	while token[0] == TokenType.ANDSYM:
+		token = lex()
+		boolfactor()
+
+
+def boolfactor():
+	global token
+	if token[0] == TokenType.NOTSYM:
+		token = lex()
+		if token[0] == TokenType.LBRACKET:
+			token = lex()
+			condition()
+			if token[0] != TokenType.RBRACKET:
+				perror_exit(3, 'Expected \']\' but \'%s\' was found instead' % token[1])
+			token = lex()
+		else:
+			perror_exit(3, 'Expected \'[\' but \'%s\' was found instead' % token[1])
+	elif token[0] == TokenType.LBRACKET:
+		token = lex()
+		condition()
+		if token[0] != TokenType.RBRACKET:
+			perror_exit(3, 'Expected \']\' but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		expression()
+		relational_oper()
+		expression()
+	# TODO
+
+
+def expression():
+	global token
+	optional_sign()
+	term()
+	while token[0] == TokenType.PLUS or token[0] == TokenType.MINUS:
+		add_oper()
+		term()
+
+
+def term():
+	global token
+	factor()
+	while token[0] == TokenType.TIMES or token[0] == TokenType.SLASH:
+		mul_oper()
+		term()
+
+
+def factor():
+	global token
+	if token[0] == TokenType.NUMBER:
+		token = lex()
+	elif token[0] == TokenType.LPAREN:
+		token = lex()
+		expression()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+	elif token[0] == TokenType.IDENT:
+		token = lex()
+		idtail()
+	else:
+		perror_exit(3, 'Expected factor but \'%s\' was found instead' % token[1])
+
+
+def idtail():
+	global token
+	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+		actualpars()
+
+
+def relational_oper():
+	global token
+	if token[0] != TokenType.EQL and token[0] != TokenType.LSS and \
+			token[0] != TokenType.LEQ and token[0] != TokenType.NEQ and \
+			token[0] != TokenType.GEQ and token[0] != TokenType.GTR:
+		perror_exit(3, 'Expected relational operator but \'%s\' was found instead' % token[1])
+	token = lex()
+
+
+def add_oper():
+	global token
+	if token[0] != TokenType.PLUS and token[0] != TokenType.MINUS:
+		perror_exit(3, 'Expected \'+\' or \'-\' but \'%s\' was found instead' % token[1])
+	token = lex()
+
+
+def mul_oper():
+	global token
+	if token[0] != TokenType.TIMES and token[0] != TokenType.SLASH:
+		perror_exit(3, 'Expected \'+\' or \'-\' but \'%s\' was found instead' % token[1])
+	token = lex()
+
+
+def optional_sign():
+	global token
+	if token[0] == TokenType.PLUS or token[0] == TokenType.MINUS:
+		add_oper()
+
+
+##############################################################
+#                                                            #
+#        Functions related to the main CSC program           #
+#                                                            #
+##############################################################
 
 
 # Print program usage and exit
@@ -418,7 +838,7 @@ def main(argv):
 		pwarn(output_file + ': exists and will be overwritten!')
 
 	open_files(input_file, output_file)
-	program()
+	syntax_analyzer()
 
 
 if __name__ == "__main__":
