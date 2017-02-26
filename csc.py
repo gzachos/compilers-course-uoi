@@ -34,7 +34,7 @@ class clr:
 	END    = '\033[0m'
 	BLD    = '\033[1m'
 	UNDRLN = '\033[4m'
-	
+
 
 class TokenType(Enum):
 	IDENT      = 0 
@@ -91,6 +91,7 @@ keywords = [
 	'and','declare','do','else','enddeclare','exit','procedure',
 	'function','print','call','if','in','inout','not','select','program',
 	'or','return','while','default']
+
 tokens   = {
 	'(':TokenType.LPAREN,
 	')':TokenType.RPAREN,
@@ -132,13 +133,13 @@ tokens   = {
 	'return':TokenType.RETURNSYM,
 	'while':TokenType.WHILESYM,
 	'default':TokenType.DEFAULTSYM}
+
 buffer   = []
 
 
 # Print message to stderr and exit
 def perror_exit(ec, *args, **kwargs):
-	print('[' + clr.ERR + 'ERROR' + clr.END + ']',
-		*args, file=sys.stderr, **kwargs)
+	print('[' + clr.ERR + 'ERROR' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 	sys.exit(ec)
 
 
@@ -161,6 +162,20 @@ def perror_line(lineno, charno):
 			print(" ", line.replace('\t', ' ').replace('\n', ''), file=sys.stderr)
 			print(clr.GRN + " " * (charno + 1) + '^' + clr.END, file=sys.stderr)
 	infile.seek(currchar)
+
+
+# Print line #lineno and message to stderr and exit
+def perror_line_exit(ec, lineno, charno, *args, **kwargs):
+	print('[' + clr.ERR + 'ERROR' + clr.END + ']', clr.BLD + '%s:%d:%d:' %
+		(infile.name, lineno, charno) + clr.END, *args, file=sys.stderr, **kwargs)
+	currchar = infile.tell()
+	infile.seek(0)
+	for index, line in enumerate(infile):
+		if index == lineno-1:
+			print(" ", line.replace('\t', ' ').replace('\n', ''), file=sys.stderr)
+			print(clr.GRN + " " * (charno + 1) + '^' + clr.END, file=sys.stderr)
+	infile.seek(currchar)
+	sys.exit(ec)
 
 
 # Open files
@@ -234,10 +249,7 @@ def lex():
 			elif c.isspace():
 				state = 0
 			else:
-				perror(clr.BLD + '%s:%d:%d:' % (infile.name, lineno, charno) +
-					clr.END, 'Invalid character \'%c\' in program' % c)
-				perror_line(lineno, charno)
-				sys.exit(1)
+				perror_line_exit(2, lineno, charno, 'Invalid character \'%c\' in program' % c)
 		elif state == 1:
 			if not c.isalnum():
 				unget = True
@@ -264,16 +276,10 @@ def lex():
 				cl = lineno
 				cc = charno - 1
 			else:
-				perror(clr.BLD + '%s:%d:%d:' % (infile.name, lineno, charno) +
-					clr.END, 'Expected \'*\' after \'\\\'')
-				perror_line(lineno, charno)
-				sys.exit(2)
+				perror_line_exit(2, lineno, charno, 'Expected \'*\' after \'\\\'')
 		elif state == 7:
 			if c == '': # EOF
-				perror(clr.BLD + '%s:%d:%d:' % (infile.name, cl, cc) +
-					clr.END, 'Unterminated comment')
-				perror_line(cl, cc)
-				sys.exit(2)
+				perror_line_exit(2, cl, cc, 'Unterminated comment')
 			elif c == '*':
 				state = 8
 		elif state == 8:
@@ -301,7 +307,7 @@ def lex():
 		else:
 			retval = (TokenType.IDENT, buff_cont[:30])
 	else:
-		retval = (tokens[buff_cont],)
+		retval = (tokens[buff_cont], buff_cont)
 	del buffer[:]
 	return retval
 
@@ -314,6 +320,15 @@ def print_usage(ec=0):
 	print('        -v, --version             Output version information')
 	print('        -o, --output OUTFILE      Place output in file: OUTFILE\n')
 	sys.exit(ec)
+
+
+# Print program version and exit
+def print_version():
+	print('CiScal Compiler ', __version__)
+	print('Copyright (C) 2017 George Z. Zachos, Andrew Konstantinidis')
+	print('This is free software; see the source for copying conditions.')
+	print('There is NO warranty to the extent permitted by law.\n')
+	sys.exit()
 
 
 def main(argv):
@@ -333,11 +348,7 @@ def main(argv):
 		if opt in ("-h", "--help"):
 			print_usage()
 		elif opt in ("-v", "--version"):
-			print('CiScal Compiler ', __version__)
-			print('Copyright (C) 2017 George Z. Zachos, Andrew Konstantinidis')
-			print('This is free software; see the source for copying conditions.')
-			print('There is NO warranty to the extent permitted by law.\n')
-			sys.exit()
+			print_version()
 		elif opt in ("-i", "--input"):
 			input_file = arg
 		elif opt in ("-o", "--output"):
@@ -361,10 +372,7 @@ def main(argv):
 		tk = lex()
 		if tk == None:
 			break
-		if len(tk) == 1:
-			print(tk[0])
-		else:
-			print(tk[1])
+		print(tk)
 
 
 if __name__ == "__main__":
