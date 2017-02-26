@@ -137,7 +137,7 @@ tokens   = {
 buffer   = []
 
 
-# Print message to stderr and exit
+# Print error message to stderr and exit
 def perror_exit(ec, *args, **kwargs):
 	print('[' + clr.ERR + 'ERROR' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 	sys.exit(ec)
@@ -153,7 +153,8 @@ def pwarn(*args, **kwargs):
 	print('[' + clr.WRN + 'WARNING' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 
 
-# Print line #lineno to stderr
+# Print line #lineno to stderr with character
+# charno highlighted
 def perror_line(lineno, charno):
 	currchar = infile.tell()
 	infile.seek(0)
@@ -164,7 +165,8 @@ def perror_line(lineno, charno):
 	infile.seek(currchar)
 
 
-# Print line #lineno and message to stderr and exit
+# Print line #lineno to stderr with character charno
+# highlighted along with and error message. Finally exit.
 def perror_line_exit(ec, lineno, charno, *args, **kwargs):
 	print('[' + clr.ERR + 'ERROR' + clr.END + ']', clr.BLD + '%s:%d:%d:' %
 		(infile.name, lineno, charno) + clr.END, *args, file=sys.stderr, **kwargs)
@@ -312,7 +314,7 @@ def lex():
 	return retval
 
 
-# Print program usage and exit with exit code: ec
+# Print program usage and exit
 def print_usage(ec=0):
 	print('Usage:  %s [OPTIONS] {-i|--input} INFILE' % __file__)
 	print('Available options:')
