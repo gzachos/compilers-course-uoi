@@ -551,26 +551,30 @@ def select_stat():
 	global token
 	if token[0] == TokenType.LPAREN:
 		token = lex()
-		if token[0] != TokenType.IDENT:
+		if token[0] == TokenType.IDENT:
 			token = lex()
 			if token[0] == TokenType.RPAREN:
 				token = lex()
+				const = 1
 				while token[0] == TokenType.NUMBER:
+					if token[1] != const:
+						perror_exit(3, 'Expected \'%d\' as case constant but \'%s\' was found instead' % (const,token[1]))
+					const += 1
 					token = lex()
-					if token[0] == TokenType.SEMICOLON:
+					if token[0] == TokenType.COLON:
 						token = lex()
 						brack_or_stat()
 					else:
-						perror_exit(3, 'Expected \':\' but \'%s\' was found instead' % token[1])
+						perror_exit(3, 'Expected \':\' after case constant but \'%s\' was found instead' % token[1])
 				if token[0] == TokenType.DEFAULTSYM:
 					token = lex()
-					if token[0] == TokenType.SEMICOLON:
+					if token[0] == TokenType.COLON:
 						token = lex()
 						brack_or_stat()
 					else:
-						perror_exit(3, 'Expected \':\' but \'%s\' was found instead' % token[1])
+						perror_exit(3, 'Expected \':\' after case constant but \'%s\' was found instead' % token[1])
 				else:
-					perror_exit(3, 'Expected \'default\' but \'%s\' was found instead' % token[1])
+					perror_exit(3, 'Expected \'default\' case but \'%s\' was found instead' % token[1])
 			else:
 				perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
 		else:
