@@ -302,7 +302,8 @@ def lex():
 
 	if unget == True:
 		del buffer[-1]
-		infile.seek(infile.tell() - 1)
+		if c != '': # EOF (special case)
+			infile.seek(infile.tell() - 1)
 		charno -= 1
 
 	buff_cont = ''.join(buffer)
