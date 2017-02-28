@@ -27,6 +27,13 @@ from enum import Enum
 __version__='0.0.1'
 
 
+##############################################################
+#                                                            #
+#                     Class definitions                      #
+#                                                            #
+##############################################################
+
+
 class clr:
 	GRN    = '\033[92m'
 	WRN    = '\033[95m'
@@ -89,11 +96,14 @@ class TokenType(Enum):
 	EOF        = 42
 
 
-keywords = [
-	'and','declare','do','else','enddeclare','exit','procedure',
-	'function','print','call','if','in','inout','not','select','program',
-	'or','return','while','default']
+##############################################################
+#                                                            #
+#         Global data declarations and definitions           #
+#                                                            #
+##############################################################
 
+
+token    = ()
 tokens   = {
 	'(':TokenType.LPAREN,
 	')':TokenType.RPAREN,
@@ -137,8 +147,13 @@ tokens   = {
 	'default':TokenType.DEFAULTSYM,
 	'EOF':TokenType.EOF}
 
-buffer   = []
-token    = ()
+
+##############################################################
+#                                                            #
+#         Useful error/warning reporting functions           #
+#                                                            #
+##############################################################
+
 
 # Print error message to stderr and exit
 def perror_exit(ec, *args, **kwargs):
@@ -190,7 +205,7 @@ def open_files(input_file, output_file):
 	charno = 0
 	try:
 		infile = open(input_file, 'r', encoding='utf-8')
-		outfile = open(output_file, 'w', encoding='utf-8')
+#		outfile = open(output_file, 'w', encoding='utf-8') # TODO uncomment later
 	except OSError as oserr:
 		if oserr.filename != None:
 			perror_exit(oserr.errno, oserr.filename + ':', oserr.strerror)
@@ -198,9 +213,17 @@ def open_files(input_file, output_file):
 			perror_exit(oserr.errno, oserr)
 
 
+##############################################################
+#                                                            #
+#           Lexical analyzer related functions               #
+#                                                            #
+##############################################################
+
+
 # Perform lexical analysis
 def lex():
 	global lineno, charno
+	buffer = []
 	cc = cl = -1
 	state = 0
 	OK    = -2
@@ -401,7 +424,6 @@ def func():
 
 
 def funcbody():
-	global token
 	formalpars()
 	block()
 
@@ -457,7 +479,6 @@ def brackets_seq():
 
 
 def brack_or_stat():
-	global token
 	if token[0] == TokenType.LBRACE:
 		brackets_seq()
 	else:
@@ -700,7 +721,6 @@ def boolfactor():
 
 
 def expression():
-	global token
 	optional_sign()
 	term()
 	while token[0] == TokenType.PLUS or token[0] == TokenType.MINUS:
@@ -709,7 +729,6 @@ def expression():
 
 
 def term():
-	global token
 	factor()
 	while token[0] == TokenType.TIMES or token[0] == TokenType.SLASH:
 		mul_oper()
@@ -734,7 +753,6 @@ def factor():
 
 
 def idtail():
-	global token
 	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
 		actualpars()
 
@@ -763,7 +781,6 @@ def mul_oper():
 
 
 def optional_sign():
-	global token
 	if token[0] == TokenType.PLUS or token[0] == TokenType.MINUS:
 		add_oper()
 
