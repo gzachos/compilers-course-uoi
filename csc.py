@@ -753,7 +753,7 @@ def factor():
 
 
 def idtail():
-	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+	if token[0] == TokenType.LPAREN:
 		actualpars()
 
 
