@@ -451,6 +451,8 @@ def formalparlist():
 	formalparitem()
 	while token[0] == TokenType.COMMA:
 		token = lex()
+		if token[0] != TokenType.INSYM and token[0] != TokenType.INOUTSYM:
+			perror_line_exit(3, tkl, tkc, 'Expected formal parameter declaration but \'%s\' was found instead' % token[1])
 		formalparitem()
 
 
