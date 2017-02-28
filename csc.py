@@ -325,10 +325,13 @@ def lex():
 ##############################################################
 
 
+# Performs syntax analysis
 def syntax_analyzer():
 	global token
 	token = lex()
 	program()
+	# At this point syntax analysis has succeeded
+	# but we should check for stray tokens.
 	if token[0] != TokenType.EOF:
 		perror_exit(3, 'Expected \'EOF\' but \'%s\' was found instead' % token[1])
 
@@ -384,27 +387,17 @@ def varlist():
 def subprograms():
 	global token
 	while token[0] == TokenType.PROCSYM or token[0] == TokenType.FUNCSYM:
+		token = lex()
 		func()
 
 
 def func():
 	global token
-	if token[0] == TokenType.PROCSYM:
+	if token[0] == TokenType.IDENT:
 		token = lex()
-		if token[0] == TokenType.IDENT:
-			token = lex()
-			funcbody()
-		else:
-			perror_exit(3, 'Expected procedure name but \'%s\' was found instead' % token[1])
-	elif token[0] == TokenType.FUNCSYM:
-		token = lex()
-		if token[0] == TokenType.IDENT:
-			token = lex()
-			funcbody()
-		else:
-			perror_exit(3, 'Expected function name but \'%s\' was found instead' % token[1])
+		funcbody()
 	else:
-		perror_exit(3, 'Expected procedure/function declaration but \'%s\' was found instead' % token[1])
+		perror_exit(3, 'Expected procedure/function name but \'%s\' was found instead' % token[1])
 
 
 def funcbody():
@@ -441,8 +434,6 @@ def formalparitem():
 		if token[0] != TokenType.IDENT:
 			perror_exit(3, 'Expected formal parameter name but \'%s\' was found instead' % token[1])
 		token = lex()
-	else:
-		perror_exit(3, 'Expected formal parameter type but \'%s\' was found instead' % token[1])
 
 
 def sequence():
@@ -492,7 +483,7 @@ def statement():
 		select_stat()
 	elif token[0] == TokenType.EXITSYM:
 		token = lex()
-		exit_stat()
+		# No need to define exit_stat()
 	elif token[0] == TokenType.RETURNSYM:
 		token = lex()
 		return_stat()
@@ -600,13 +591,6 @@ def do_while_stat():
 		perror_exit(3, 'Expected \'while\' token but \'%s\' was found instead' % token[1])
 
 
-def exit_stat():
-	global token
-	if token[0] != TokenType.EXITSYM:
-		perror_exit(3, 'Expected \'exit\' token but \'%s\' was found instead' % token[1])
-	token = lex()
-
-
 def return_stat():
 	global token
 	if token[0] == TokenType.LPAREN:
@@ -615,7 +599,6 @@ def return_stat():
 		if token[0] != TokenType.RPAREN:
 			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
 		token = lex()
-		brack_or_stat()
 	else:
 		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
 
@@ -628,7 +611,6 @@ def print_stat():
 		if token[0] != TokenType.RPAREN:
 			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
 		token = lex()
-		brack_or_stat()
 	else:
 		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
 
@@ -644,8 +626,15 @@ def call_stat():
 
 def actualpars():
 	global token
-	if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
-		actualparlist()
+	if token[0] == TokenType.LPAREN:
+		token = lex()
+		if token[0] == TokenType.INSYM or token[0] == TokenType.INOUTSYM:
+			actualparlist()
+		if token[0] != TokenType.RPAREN:
+			perror_exit(3, 'Expected \')\' but \'%s\' was found instead' % token[1])
+		token = lex()
+	else:
+		perror_exit(3, 'Expected \'(\' but \'%s\' was found instead' % token[1])
 
 
 def actualparlist():
@@ -708,7 +697,6 @@ def boolfactor():
 		expression()
 		relational_oper()
 		expression()
-	# TODO
 
 
 def expression():
@@ -725,7 +713,7 @@ def term():
 	factor()
 	while token[0] == TokenType.TIMES or token[0] == TokenType.SLASH:
 		mul_oper()
-		term()
+		factor()
 
 
 def factor():
@@ -770,7 +758,7 @@ def add_oper():
 def mul_oper():
 	global token
 	if token[0] != TokenType.TIMES and token[0] != TokenType.SLASH:
-		perror_exit(3, 'Expected \'+\' or \'-\' but \'%s\' was found instead' % token[1])
+		perror_exit(3, 'Expected \'*\' or \'/\' but \'%s\' was found instead' % token[1])
 	token = lex()
 
 
