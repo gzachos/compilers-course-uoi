@@ -591,7 +591,7 @@ def select_stat():
 						token = lex()
 						brack_or_stat()
 					else:
-						perror_line_exit(3, tkl, tkc, 'Expected \':\' after case constant but \'%s\' was found instead' % token[1])
+						perror_line_exit(3, tkl, tkc, 'Expected \':\' after default keyword but \'%s\' was found instead' % token[1])
 				else:
 					perror_line_exit(3, tkl, tkc, 'Expected \'default\' case but \'%s\' was found instead' % token[1])
 			else:
