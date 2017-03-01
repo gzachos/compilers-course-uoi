@@ -291,6 +291,10 @@ def lex():
 						'Variable names should begin with alphabetic character')
 				unget = True
 				state = OK
+				#TODO correctly check for {MIN,MAX}_INT violation
+				if int(''.join(buffer[:-1])) > 32767:
+					perror_line_exit(2, lineno, charno - len(''.join(buffer)) + 1,
+						'Number constants should be between -32768 and 32767')
 		elif state == 3:
 			if c != '=' and c != '>':
 				unget = True
