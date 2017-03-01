@@ -286,6 +286,9 @@ def lex():
 				state = OK
 		elif state == 2:
 			if not c.isdigit():
+				if c.isalpha():
+					perror_line_exit(2, lineno, charno - len(''.join(buffer)) + 1,
+						'Variable names should begin with alphabetic character')
 				unget = True
 				state = OK
 		elif state == 3:
