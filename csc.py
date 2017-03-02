@@ -376,7 +376,8 @@ def syntax_analyzer():
     # At this point syntax analysis has succeeded
     # but we should check for stray tokens.
     if token.tktype != TokenType.EOF:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
 
 
 def program():
@@ -387,7 +388,8 @@ def program():
             token = lex()
             block();
         else:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected program name but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected program name but found \'%s\' instead' % token.tkval)
     else:
         perror_exit(3, 'Missing \'program\' keyword')
 
@@ -400,10 +402,12 @@ def block():
         subprograms()
         sequence()
         if token.tktype != TokenType.RBRACE:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \'}\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \'}\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'{\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'{\' but found \'%s\' instead' % token.tkval)
 
 
 def declarations():
@@ -412,7 +416,8 @@ def declarations():
         token = lex()
         varlist()
         if token.tktype != TokenType.ENDDECLSYM:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \'enddeclare\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \'enddeclare\' but found \'%s\' instead' % token.tkval)
         token = lex()
 
 
@@ -423,7 +428,9 @@ def varlist():
         while token.tktype == TokenType.COMMA:
             token = lex()
             if token.tktype != TokenType.IDENT:
-                perror_line_exit(3, token.tkl, token.tkc, 'Expected variable declaration but found \'%s\' instead' % token.tkval)
+                perror_line_exit(3, token.tkl, token.tkc,
+                    'Expected variable declaration but found \'%s\' instead'
+                    % token.tkval)
             token = lex()
 
 
@@ -440,7 +447,8 @@ def func():
         token = lex()
         funcbody()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected procedure/function name but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected procedure/function name but found \'%s\' instead' % token.tkval)
 
 
 def funcbody():
@@ -455,10 +463,12 @@ def formalpars():
         if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
             formalparlist()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def formalparlist():
@@ -467,7 +477,9 @@ def formalparlist():
     while token.tktype == TokenType.COMMA:
         token = lex()
         if token.tktype != TokenType.INSYM and token.tktype != TokenType.INOUTSYM:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected formal parameter declaration but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected formal parameter declaration but found \'%s\' instead'
+                % token.tkval)
         formalparitem()
 
 
@@ -476,7 +488,9 @@ def formalparitem():
     if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
         token = lex()
         if token.tktype != TokenType.IDENT:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected formal parameter name but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected formal parameter name but found \'%s\' instead'
+                % token.tkval)
         token = lex()
 
 
@@ -494,10 +508,12 @@ def brackets_seq():
         token = lex()
         sequence()
         if token.tktype != TokenType.RBRACE:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \'}\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \'}\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'{\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'{\' but found \'%s\' instead' % token.tkval)
 
 
 def brack_or_stat():
@@ -544,7 +560,8 @@ def assignment_stat():
         token = lex()
         expression()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \':=\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \':=\' but found \'%s\' instead' % token.tkval)
 
 
 def if_stat():
@@ -553,12 +570,14 @@ def if_stat():
         token = lex()
         condition()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
         brack_or_stat()
         elsepart()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def elsepart():
@@ -574,11 +593,13 @@ def while_stat():
         token = lex()
         condition()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
         brack_or_stat()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def select_stat():
@@ -592,29 +613,42 @@ def select_stat():
                 const = 1
                 while token.tktype == TokenType.NUMBER:
                     if token.tkval != const:
-                        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'%d\' as case constant but found \'%s\' instead' % (const,token.tkval))
+                        perror_line_exit(3, token.tkl, token.tkc,
+                            'Expected \'%d\' as case constant but found \'%s\' instead'
+                            % (const,token.tkval))
                     const += 1
                     token = lex()
                     if token.tktype == TokenType.COLON:
                         token = lex()
                         brack_or_stat()
                     else:
-                        perror_line_exit(3, token.tkl, token.tkc, 'Expected \':\' after case constant but found \'%s\' instead' % token.tkval)
+                        perror_line_exit(3, token.tkl, token.tkc,
+                            'Expected \':\' after case constant but found \'%s\' instead'
+                            % token.tkval)
                 if token.tktype == TokenType.DEFAULTSYM:
                     token = lex()
                     if token.tktype == TokenType.COLON:
                         token = lex()
                         brack_or_stat()
                     else:
-                        perror_line_exit(3, token.tkl, token.tkc, 'Expected \':\' after default keyword but found \'%s\' instead' % token.tkval)
+                        perror_line_exit(3, token.tkl, token.tkc,
+                            'Expected \':\' after default keyword but found \'%s\' instead'
+                            % token.tkval)
                 else:
-                    perror_line_exit(3, token.tkl, token.tkc, 'Expected \'default\' case but found \'%s\' instead' % token.tkval)
+                    perror_line_exit(3, token.tkl, token.tkc,
+                        'Expected \'default\' case but found \'%s\' instead'
+                        % token.tkval)
             else:
-                perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+                perror_line_exit(3, token.tkl, token.tkc,
+                    'Expected \')\' but found \'%s\' instead'
+                    % token.tkval)
         else:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected variable identifier but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected variable identifier but found \'%s\' instead'
+                % token.tkval)
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def do_while_stat():
@@ -626,12 +660,15 @@ def do_while_stat():
             token = lex()
             condition()
             if token.tktype != TokenType.RPAREN:
-                perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+                perror_line_exit(3, token.tkl, token.tkc,
+                    'Expected \')\' but found \'%s\' instead' % token.tkval)
             token = lex()
         else:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \'(\' but found \'%s\' instead' % token.tkval)
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'while\' token but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'while\' token but found \'%s\' instead' % token.tkval)
 
 
 def return_stat():
@@ -640,10 +677,12 @@ def return_stat():
         token = lex()
         expression()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def print_stat():
@@ -652,10 +691,12 @@ def print_stat():
         token = lex()
         expression()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def call_stat():
@@ -664,7 +705,8 @@ def call_stat():
         token = lex()
         actualpars()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected procedure name but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected procedure name but found \'%s\' instead' % token.tkval)
 
 
 def actualpars():
@@ -674,10 +716,12 @@ def actualpars():
         if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
             actualparlist()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'(\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
 def actualparlist():
@@ -696,10 +740,12 @@ def actualparitem():
     elif token.tktype == TokenType.INOUTSYM:
         token = lex()
         if token.tktype != TokenType.IDENT:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected variable identifier but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected variable identifier but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected parameter type but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected parameter type but found \'%s\' instead' % token.tkval)
 
 
 def condition():
@@ -726,15 +772,18 @@ def boolfactor():
             token = lex()
             condition()
             if token.tktype != TokenType.RBRACKET:
-                perror_line_exit(3, token.tkl, token.tkc, 'Expected \']\' but found \'%s\' instead' % token.tkval)
+                perror_line_exit(3, token.tkl, token.tkc,
+                    'Expected \']\' but found \'%s\' instead' % token.tkval)
             token = lex()
         else:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \'[\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \'[\' but found \'%s\' instead' % token.tkval)
     elif token.tktype == TokenType.LBRACKET:
         token = lex()
         condition()
         if token.tktype != TokenType.RBRACKET:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \']\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \']\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
         expression()
@@ -765,13 +814,15 @@ def factor():
         token = lex()
         expression()
         if token.tktype != TokenType.RPAREN:
-            perror_line_exit(3, token.tkl, token.tkc, 'Expected \')\' but found \'%s\' instead' % token.tkval)
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     elif token.tktype == TokenType.IDENT:
         token = lex()
         idtail()
     else:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected factor but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected factor but found \'%s\' instead' % token.tkval)
 
 
 def idtail():
@@ -784,21 +835,24 @@ def relational_oper():
     if token.tktype != TokenType.EQL and token.tktype != TokenType.LSS and \
             token.tktype != TokenType.LEQ and token.tktype != TokenType.NEQ and \
             token.tktype != TokenType.GEQ and token.tktype != TokenType.GTR:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected relational operator but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected relational operator but found \'%s\' instead' % token.tkval)
     token = lex()
 
 
 def add_oper():
     global token
     if token.tktype != TokenType.PLUS and token.tktype != TokenType.MINUS:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'+\' or \'-\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'+\' or \'-\' but found \'%s\' instead' % token.tkval)
     token = lex()
 
 
 def mul_oper():
     global token
     if token.tktype != TokenType.TIMES and token.tktype != TokenType.SLASH:
-        perror_line_exit(3, token.tkl, token.tkc, 'Expected \'*\' or \'/\' but found \'%s\' instead' % token.tkval)
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected \'*\' or \'/\' but found \'%s\' instead' % token.tkval)
     token = lex()
 
 
