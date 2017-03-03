@@ -299,10 +299,6 @@ def lex():
                         'Variable names should begin with alphabetic character')
                 unget = True
                 state = OK
-                # MIN_INT= -32767, MAX_INT= 32767
-                if int(''.join(buffer[:-1])) > 32767:
-                    perror_line_exit(2, lineno, charno - len(''.join(buffer)) + 1,
-                        'Number constants should be between -32767 and 32767')
         elif state == 3:
             if c != '=' and c != '>':
                 unget = True
@@ -352,7 +348,7 @@ def lex():
     buff_cont = ''.join(buffer)
     if buff_cont not in tokens.keys():
         if buff_cont.isdigit():
-            retval = Token(TokenType.NUMBER, int(buff_cont), tkl, tkc)
+            retval = Token(TokenType.NUMBER, buff_cont, tkl, tkc)
         else:
             retval = Token(TokenType.IDENT, buff_cont[:30], tkl, tkc)
     else:
@@ -810,16 +806,7 @@ def factor():
     global token
     if token.tktype == TokenType.NUMBER or token.tktype == TokenType.PLUS or \
             token.tktype == TokenType.MINUS:
-        sign = '+'
-        if token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
-            sign = token.tkval
-            token = lex()
-        if token.tktype == TokenType.NUMBER:
-            numval = int(''.join((sign, str(token.tkval))))
-        else:
-            perror_line_exit(3, token.tkl, token.tkc,
-                'Expected number constant but found \'%s\' instead' % token.tkval)
-        token = lex()
+        number_const()
     elif token.tktype == TokenType.LPAREN:
         token = lex()
         expression()
@@ -833,6 +820,26 @@ def factor():
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected factor but found \'%s\' instead' % token.tkval)
+
+
+# Custom function that returns the numeric value
+# of a constant. Optional sign is taken into account.
+def number_const():
+    sign = '+'
+    if token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
+        sign = token.tkval
+        token = lex()
+    if token.tktype == TokenType.NUMBER:
+        numval = int(''.join((sign, token.tkval)))
+        # MIN_INT= -32768, MAX_INT= 32767
+        if numval < -32768 or numval > 32767:
+            perror_line_exit(3, token.tkl, token.tkc,
+               'Number constants should be between -32768 and 32767')
+    else:
+        perror_line_exit(3, token.tkl, token.tkc,
+            'Expected number constant but found \'%s\' instead' % token.tkval)
+    token = lex()
+    return numval
 
 
 def idtail():
