@@ -825,6 +825,7 @@ def factor():
 # Custom function that returns the numeric value
 # of a constant. Optional sign is taken into account.
 def number_const():
+    global token
     sign = '+'
     if token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
         sign = token.tkval
