@@ -299,10 +299,10 @@ def lex():
                         'Variable names should begin with alphabetic character')
                 unget = True
                 state = OK
-                #TODO correctly check for {MIN,MAX}_INT violation
+                # MIN_INT= -32767, MAX_INT= 32767
                 if int(''.join(buffer[:-1])) > 32767:
                     perror_line_exit(2, lineno, charno - len(''.join(buffer)) + 1,
-                        'Number constants should be between -32768 and 32767')
+                        'Number constants should be between -32767 and 32767')
         elif state == 3:
             if c != '=' and c != '>':
                 unget = True
@@ -808,7 +808,17 @@ def term():
 
 def factor():
     global token
-    if token.tktype == TokenType.NUMBER:
+    if token.tktype == TokenType.NUMBER or token.tktype == TokenType.PLUS or \
+            token.tktype == TokenType.MINUS:
+        sign = '+'
+        if token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
+            sign = token.tkval
+            token = lex()
+        if token.tktype == TokenType.NUMBER:
+            numval = int(''.join((sign, str(token.tkval))))
+        else:
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected number constant but found \'%s\' instead' % token.tkval)
         token = lex()
     elif token.tktype == TokenType.LPAREN:
         token = lex()
