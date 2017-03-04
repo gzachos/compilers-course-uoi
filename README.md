@@ -25,3 +25,6 @@ Semester
 --------
 > Spring Semester 2017
 
+Execution
+---------
+Run: ```./csc.py``` to display usage information.
