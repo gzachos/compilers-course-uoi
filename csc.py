@@ -585,7 +585,7 @@ def elsepart():
     global token
     if token.tktype == TokenType.ELSESYM:
         token = lex()
-        brack_or_stat
+        brack_or_stat()
 
 
 def while_stat():
