@@ -3,8 +3,8 @@
 program MyProg {
 	
 	select(myvar)
-		1:
-		2:
-		3:
+		1: {}
+		2: {}
+		3: {}
 
 }

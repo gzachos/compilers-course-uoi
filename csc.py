@@ -613,7 +613,7 @@ def select_stat():
                 token = lex()
                 const = 1
                 while token.tktype == TokenType.NUMBER:
-                    if token.tkval != const:
+                    if int(token.tkval) != const:
                         perror_line_exit(3, token.tkl, token.tkc,
                             'Expected \'%d\' as case constant but found \'%s\' instead'
                             % (const,token.tkval))

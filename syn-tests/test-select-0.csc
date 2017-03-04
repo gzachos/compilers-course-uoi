@@ -3,10 +3,10 @@
 program MyProg {
 	
 	select(myvar)
-		0:
-		1:
-		2:
-		3:
-		default:
+		0: {}
+		1: {}
+		2: {}
+		3: {}
+		default: {}
 
 }

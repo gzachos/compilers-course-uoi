@@ -2,6 +2,8 @@
 
 program MyProg {
 	
-	do
+	do {
+	
+	}
 	
 }
