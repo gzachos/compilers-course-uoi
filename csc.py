@@ -513,10 +513,15 @@ def brackets_seq():
 
 
 def brack_or_stat():
+    global token
     if token.tktype == TokenType.LBRACE:
         brackets_seq()
     else:
         statement()
+        if token.tktype != TokenType.SEMICOLON:
+            perror_line_exit(3, token.tkl, token.tkc,
+                'Expected \';\' but found \'%s\' instead' % token.tkval)
+        token = lex()
 
 
 def statement():
