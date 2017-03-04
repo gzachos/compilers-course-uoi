@@ -897,6 +897,9 @@ def print_usage(ec=0):
     print('Available options:')
     print('        -h, --help                Display this information')
     print('        -v, --version             Output version information')
+    print('        -I, --interm              Keep intermediate code (IC) file')
+    print('        -C, --c-equiv             Keep IC equivalent in C lang file')
+    print('        --save-temps              Equivalent to -IC option')
     print('        -o, --output OUTFILE      Place output in file: OUTFILE\n')
     sys.exit(ec)
 
@@ -915,7 +918,8 @@ def main(argv):
     output_file = ''
 
     try:
-        opts, args = getopt.getopt(argv,"hvo::i:",["help", "version", "input=", "output="])
+        opts, args = getopt.getopt(argv,"hvICo::i:",["help", "version", "interm",
+                                    "c-equiv", "save-temps", "input=", "output="])
     except getopt.GetoptError as err:
         perror(err)
         print_usage(1)
@@ -932,6 +936,8 @@ def main(argv):
             input_file = arg
         elif opt in ("-o", "--output"):
             output_file = arg
+        elif opt in ("-I", "--interm", "-C", "--c-equiv", "--save-temps"):
+            pwarn("%s: Currently unavailable option" % opt)
 
     if input_file == '':
         perror('Option {-i|--input} is required')
@@ -941,7 +947,7 @@ def main(argv):
         perror_exit(1, 'INFILE should have a \'.csc\' extension')
 
     if output_file == '':
-        output_file = input_file[:-4] + '.out'
+        output_file = input_file[:-4] + '.asm'
 
     if os.path.isfile(output_file):
         pwarn(output_file + ': exists and will be overwritten!')
