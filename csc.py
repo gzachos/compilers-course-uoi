@@ -96,6 +96,11 @@ class TokenType(Enum):
     EOF        = 42
 
 
+# What the lexical analyzer returns to the syntax analyzer
+#   tktype : TokenType object
+#   tkval  : token value
+#   tkl    : token start line number
+#   tkc    : token start character number
 class Token():
     def __init__(self, tktype, tkval, tkl, tkc):
         self.tktype, self.tkval, self.tkl, self.tkc = tktype, tkval, tkl, tkc
@@ -111,7 +116,7 @@ class Token():
 #                                                            #
 ##############################################################
 
-lineno   = charno = -1
+lineno   = charno = -1  # Current line and character number of input file
 token    = Token(None, None, None, None)
 tokens   = {
     '(':          TokenType.LPAREN,
@@ -180,8 +185,7 @@ def pwarn(*args, **kwargs):
     print('[' + clr.WRN + 'WARNING' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 
 
-# Print line #lineno to stderr with character
-# charno highlighted
+# Print line #lineno to stderr with character charno highlighted
 def perror_line(lineno, charno):
     currchar = infile.tell()
     infile.seek(0)
@@ -193,7 +197,7 @@ def perror_line(lineno, charno):
 
 
 # Print line #lineno to stderr with character charno
-# highlighted along with and error message. Finally exit.
+# highlighted and along with and error message. Finally exit.
 def perror_line_exit(ec, lineno, charno, *args, **kwargs):
     print('[' + clr.ERR + 'ERROR' + clr.END + ']', clr.BLD + '%s:%d:%d:' %
         (infile.name, lineno, charno) + clr.END, *args, file=sys.stderr, **kwargs)
@@ -232,12 +236,15 @@ def open_files(input_file, output_file):
 # Perform lexical analysis
 def lex():
     global lineno, charno
-    tkl = tkc = -1
+
     buffer = []
-    cc = cl = -1
-    state = 0
-    OK    = -2
-    unget = False
+    tkl = tkc = -1 # token start lineno, charno
+    cc = cl = -1   # comment start lineno, charno
+    state = 0      # Initial FSM state
+    OK    = -2     # Final FSM state
+    unget = False  # True if file pointer should be repositioned
+
+    # Lexical analyzer's FSM implementation
     while state != OK:
         c = infile.read(1)
         buffer.append(c)
@@ -255,31 +262,7 @@ def lex():
                 state = 5
             elif c == '\\':
                 state = 6
-            elif c == '+':
-                state = OK
-            elif c == '-':
-                state = OK
-            elif c == '*':
-                state = OK
-            elif c == '/':
-                state = OK
-            elif c == '=':
-                state = OK
-            elif c == ',':
-                state = OK
-            elif c == ';':
-                state = OK
-            elif c == '{':
-                state = OK
-            elif c == '}':
-                state = OK
-            elif c == '(':
-                state = OK
-            elif c == ')':
-                state = OK
-            elif c == '[':
-                state = OK
-            elif c == ']':
+            elif c in ('+', '-', '*', '/', '=', ',', ';', '{', '}', '(', ')', '[', ']'):
                 state = OK
             elif c == '': # EOF
                 state = OK
@@ -339,12 +322,14 @@ def lex():
                 lineno += 1
                 charno = 0
 
+    # Unget last character read
     if unget == True:
         del buffer[-1]
         if c != '': # EOF (special case)
             infile.seek(infile.tell() - 1)
         charno -= 1
 
+    # Empty buffer and return the Token object
     buff_cont = ''.join(buffer)
     if buff_cont not in tokens.keys():
         if buff_cont.isdigit():
@@ -376,6 +361,11 @@ def syntax_analyzer():
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
 
 
+# The following functions implement the syntax rules of CiScal grammar rev.3
+# (as of March 3, 2017) and no further documentation is necessary other than
+# the one found in ciscal-grammar.pdf.
+
+
 def program():
     global token
     if token.tktype == TokenType.PROGRAMSYM:
@@ -399,11 +389,11 @@ def block():
         sequence()
         if token.tktype != TokenType.RBRACE:
             perror_line_exit(3, token.tkl, token.tkc,
-                'Expected \'}\' but found \'%s\' instead' % token.tkval)
+                'Expected block end (\'}\') but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'{\' but found \'%s\' instead' % token.tkval)
+            'Expected block start (\'{\') but found \'%s\' instead' % token.tkval)
 
 
 def declarations():
@@ -505,11 +495,13 @@ def brackets_seq():
         sequence()
         if token.tktype != TokenType.RBRACE:
             perror_line_exit(3, token.tkl, token.tkc,
-                'Expected \'}\' but found \'%s\' instead' % token.tkval)
+                'Expected end of bracket sequence (\'}\') but found \'%s\' instead'
+                % token.tkval)
         token = lex()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'{\' but found \'%s\' instead' % token.tkval)
+            'Expected start of bracket sequence (\'{\') but found \'%s\' instead'
+            % token.tkval)
 
 
 def brack_or_stat():
@@ -520,7 +512,8 @@ def brack_or_stat():
         statement()
         if token.tktype != TokenType.SEMICOLON:
             perror_line_exit(3, token.tkl, token.tkc,
-                'Expected \';\' but found \'%s\' instead' % token.tkval)
+                'Expected \';\' after single or empty statement but found \'%s\' instead'
+                % token.tkval)
         token = lex()
 
 
@@ -543,7 +536,8 @@ def statement():
         select_stat()
     elif token.tktype == TokenType.EXITSYM:
         token = lex()
-        # No need to define exit_stat()
+        # No need to define exit_stat();
+        # only to consume token.
     elif token.tktype == TokenType.RETURNSYM:
         token = lex()
         return_stat()
@@ -578,7 +572,7 @@ def if_stat():
         elsepart()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after \'if\' but found \'%s\' instead' % token.tkval)
 
 
 def elsepart():
@@ -600,7 +594,8 @@ def while_stat():
         brack_or_stat()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after \'while\' but found \'%s\' instead'
+            % token.tkval)
 
 
 def select_stat():
@@ -649,7 +644,8 @@ def select_stat():
                 % token.tkval)
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after \'select\' but found \'%s\' instead'
+            % token.tkval)
 
 
 def do_while_stat():
@@ -666,7 +662,8 @@ def do_while_stat():
             token = lex()
         else:
             perror_line_exit(3, token.tkl, token.tkc,
-                'Expected \'(\' but found \'%s\' instead' % token.tkval)
+                'Expected \'(\' after \'while\' but found \'%s\' instead'
+                % token.tkval)
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'while\' token but found \'%s\' instead' % token.tkval)
@@ -683,7 +680,8 @@ def return_stat():
         token = lex()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after \'return\' but found \'%s\' instead'
+            % token.tkval)
 
 
 def print_stat():
@@ -697,7 +695,8 @@ def print_stat():
         token = lex()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after \'print\' but found \'%s\' instead'
+            % token.tkval)
 
 
 def call_stat():
@@ -722,7 +721,8 @@ def actualpars():
         token = lex()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
-            'Expected \'(\' but found \'%s\' instead' % token.tkval)
+            'Expected \'(\' after procedure/function name but found \'%s\' instead'
+            % token.tkval)
 
 
 def actualparlist():
@@ -778,7 +778,8 @@ def boolfactor():
             token = lex()
         else:
             perror_line_exit(3, token.tkl, token.tkc,
-                'Expected \'[\' but found \'%s\' instead' % token.tkval)
+                'Expected \'[\' after \'not\' but found \'%s\' instead'
+                % token.tkval)
     elif token.tktype == TokenType.LBRACKET:
         token = lex()
         condition()
@@ -913,6 +914,8 @@ def print_version():
     sys.exit()
 
 
+# Implements the command line interface and triggers the
+# different stages of the compilation process.
 def main(argv):
     input_file  = ''
     output_file = ''
@@ -958,5 +961,4 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
 
