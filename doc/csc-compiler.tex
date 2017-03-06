@@ -222,6 +222,27 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 \end{verbatim}
 
 \pagebreak
+
+
+%----------------------------------------------------------------------------------------
+%	Deliverables
+%----------------------------------------------------------------------------------------
+
+\section{Deliverables}
+
+...
+
+%----------------------------------------------------------------------------------------
+%	Error Handling
+%----------------------------------------------------------------------------------------
+
+\section{Error Handling}
+
+...
+
+
+\pagebreak
+
 %----------------------------------------------------------------------------------------
 %	Lexical Analyzer
 %----------------------------------------------------------------------------------------
@@ -325,7 +346,13 @@ The \code{lex()} function returns an object of type \code{Token} to the syntax a
 
 \section{Syntax Analyzer}
 
-...
+In order for the syntax analysis to take place, a function for each grammar rule was defined. 
+In the \code{syntax\_analyzer()} function, the global variable \code{token} is assigned the
+\code{Token} class instance returned by the first call to \code{lex()}. Then the \code{program()}
+function that implements the \code{<PROGRAM>} grammar rule is called and upon success, a last
+check takes place to ensure that \code{EOF} follows program end. All functions implementing
+grammar rules expect \code{token} to be ready for ``consumption'' and as a consequence 
+replace it if needed.
 
 % Listing \ref{homework_example} shows a Python script.
 % \pythonscript{homework_example}{Sample Python Script With Highlighting}
