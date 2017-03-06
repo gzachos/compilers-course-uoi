@@ -230,7 +230,31 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 
 \section{Deliverables}
 
-...
+\begin{itemize}
+ \item 1st Phase (10\%)
+ \begin{itemize}
+  \item Lexical Analysis
+  \item Syntax Analysis
+ \end{itemize}
+
+ \item 2nd Phase (30\%)
+ \begin{itemize}
+  \item Intermediate Code Generation
+ \end{itemize}
+ 
+ \item 3rd Phase (10\%)
+ \begin{itemize}
+  \item Semantic Analysis
+  \item Symbol Table
+ \end{itemize}
+
+ \item 4th Phase (50\%)
+ \begin{itemize}
+  \item Final Code Generation (30\%)
+  \item Project Report (20\%)
+ \end{itemize}
+\end{itemize}
+
 
 %----------------------------------------------------------------------------------------
 %	Error Handling
@@ -238,7 +262,16 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 
 \section{Error Handling}
 
-...
+To simplify display of error messages, the following functions have been defined:
+\begin{itemize}
+ \item \code{perror\_exit()}: Prints an error message to stderr and exit
+ \item \code{perror()}: Prints an error message to stderr
+ \item \code{pwarn()}: Prints a warning to stderr
+ \item \code{perror\_line\_exit(ec, lineno, charno, ...)}: Prints line \underline{lineno}
+       to stderr with character \underline{charno} highlighted and along with and error message.
+       Finally the program exits.
+\end{itemize}
+
 
 
 \pagebreak
