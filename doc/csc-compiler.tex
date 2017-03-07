@@ -153,7 +153,7 @@
 }
 
 \author{\textbf{\hmwkAuthorName}}
-\date{March 5, 2017} % Insert date here if you want it to appear below your name
+\date{March 7, 2017} % Insert date here if you want it to appear below your name
 
 %----------------------------------------------------------------------------------------
 
@@ -231,7 +231,7 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 \section{Deliverables}
 
 \begin{itemize}
- \item 1st Phase (10\%)
+ \item 1st Phase (10\%) [Due on March 13, 2017] [Delivered]
  \begin{itemize}
   \item Lexical Analysis
   \item Syntax Analysis
@@ -264,7 +264,7 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 
 To simplify display of error messages, the following functions have been defined:
 \begin{itemize}
- \item \code{perror\_exit()}: Prints an error message to stderr and program exits
+ \item \code{perror\_exit()}: Prints an error message to stderr and then program exits
  \item \code{perror()}: Prints an error message to stderr
  \item \code{pwarn()}: Prints a warning to stderr
  \item \code{perror\_line\_exit(ec, lineno, charno, ...)}: Prints line \underline{lineno}
@@ -359,7 +359,7 @@ This information includes:
 \begin{itemize}
  \item \code{tktype}: token type (attribute of the \code{TokeType} enumeration)
  \item \code{tkval}: the actual token value
- \item \code{tkl}: the line of the input file that the token was found
+ \item \code{tkl}: the line number of the input file that the token was found
  \item \code{tkc}: the offset of the token's first character from the start of line \code{tkl}
 \end{itemize}
 
@@ -395,9 +395,9 @@ value is found, an error message should be printed to console. Performing that
 check is a bit tricky for the following reasons:
 \begin{itemize}
  \item It cannot take place during lexical analysis - This happens because \code{+} and \code{-}
-       are terminal symbols and as soon as they are identfied, should be returned to the syntax
+       are terminal symbols and as soon as they are identified, should be returned to the syntax
        analyzer. Moreover, during lexical analysis there is no way to tell if \code{+} and \code{-}
-       is a sign or an operator (To put it better, if it is a unary or a binary operator).
+       is a sign or an operator (to put it better, if it is a unary or a binary operator).
        Nevertheless, if the range $[-32768, 32767]$ was symmetrical, the check would be sign
        independent and could take place in the \code{lex()} function.
  \item The syntax analyzer expects from \code{lex()} to return a signed number - This is because
@@ -407,9 +407,11 @@ check is a bit tricky for the following reasons:
        analyzer expects a numeric constant but the subtraction operator will be encountered.
 \end{itemize}
 
-For the reasons stated, syntax rule \code{<FACTOR> ::= CONSTANT | (<EXPRESSION>) | ID <IDTAIL>} was
+
+For theses reasons, syntax rule \code{<FACTOR> ::= CONSTANT | (<EXPRESSION>) | ID <IDTAIL>} was
 changed to \code{<FACTOR> ::= <OPTIONAL\_SIGN> CONSTANT | (<EXPRESSION>) | ID <IDTAIL>}.
-This change has no impact in the manipulation of numeric constants in the \code{<SELECT-STAT>}
+
+\textbf{Important}: This change has no impact in the manipulation of numeric constants in the \code{<SELECT-STAT>}
 rule and consequently an optional sign preceding a case constant is illegal.
 
 % Listing \ref{homework_example} shows a Python script.
