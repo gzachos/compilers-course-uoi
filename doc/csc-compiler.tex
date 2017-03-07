@@ -183,7 +183,7 @@ In contrast to its limited capabilities, the development process of a CiScal com
 
 In general, the language does support the following features:
 \begin{itemize}
- \item Numeric constans between -32768 and 32767
+ \item Numeric (integer) constans between -32768 and 32767
  \item \code{if-else}, \code{do-while}, \code{while}, \code{select} and assignment statements
  \item Relational and arithmetic expressions
  \item Definition of functions and procedures; both nested and not
@@ -264,12 +264,12 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
 
 To simplify display of error messages, the following functions have been defined:
 \begin{itemize}
- \item \code{perror\_exit()}: Prints an error message to stderr and exit
+ \item \code{perror\_exit()}: Prints an error message to stderr and program exits
  \item \code{perror()}: Prints an error message to stderr
  \item \code{pwarn()}: Prints a warning to stderr
  \item \code{perror\_line\_exit(ec, lineno, charno, ...)}: Prints line \underline{lineno}
-       to stderr with character \underline{charno} highlighted and along with and error message.
-       Finally the program exits.
+       of the inputfile to stderr with character \underline{charno} highlighted and along
+       with and error message. Finally the program exits.
 \end{itemize}
 
 
@@ -386,6 +386,31 @@ function that implements the \code{<PROGRAM>} grammar rule is called and upon su
 check takes place to ensure that \code{EOF} follows program end. All functions implementing
 grammar rules expect \code{token} to be ready for ``consumption'' and as a consequence 
 replace it if needed.
+
+\section{Implementation specifics}
+\subsection{Handling of numeric constants}
+CiScal source code files can contain (integer) numeric constants between -32768 and 32767 and
+an optional sign (\code{+} or \code{-}) may precede the constant. In case an illegal constant
+value is found, an error message should be printed to console. Performing that
+check is a bit tricky for the following reasons:
+\begin{itemize}
+ \item It cannot take place during lexical analysis - This happens because \code{+} and \code{-}
+       are terminal symbols and as soon as they are identfied, should be returned to the syntax
+       analyzer. Moreover, during lexical analysis there is no way to tell if \code{+} and \code{-}
+       is a sign or an operator (To put it better, if it is a unary or a binary operator).
+       Nevertheless, if the range $[-32768, 32767]$ was symmetrical, the check would be sign
+       independent and could take place in the \code{lex()} function.
+ \item The syntax analyzer expects from \code{lex()} to return a signed number - This is because
+       of CiScal's grammar rules and specifically rule \code{<TERM> ::= <FACTOR> (<MUL\_OPER> <FACTOR>)*}
+       when \code{<FACTOR> ::= CONSTANT}. According to these rules, expressions like \code{-2 * -3}
+       will trigger a syntax error. In this example, after the multiplication operator the syntax
+       analyzer expects a numeric constant but the subtraction operator will be encountered.
+\end{itemize}
+
+For the reasons stated, syntax rule \code{<FACTOR> ::= CONSTANT | (<EXPRESSION>) | ID <IDTAIL>} was
+changed to \code{<FACTOR> ::= <OPTIONAL\_SIGN> CONSTANT | (<EXPRESSION>) | ID <IDTAIL>}.
+This change has no impact in the manipulation of numeric constants in the \code{<SELECT-STAT>}
+rule and consequently an optional sign preceding a case constant is illegal.
 
 % Listing \ref{homework_example} shows a Python script.
 % \pythonscript{homework_example}{Sample Python Script With Highlighting}
