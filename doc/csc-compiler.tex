@@ -304,9 +304,9 @@ there are fourteen (14) more accepting states that correspond to characters: '\c
   \node[state] (s_3) [below=2.7cm of s_2] {$s_3$};
   \node[state, accepting] (leq) [below =1.3cm of const] {$<=$};
   \node[state, accepting] (neq) [below =1.3cm of leq] {$<>$};
-  \node[state, accepting] (eq) [below =1.3cm of neq] {$=$};
+  \node[state, accepting] (lss) [below =1.3cm of neq] {$<$};
   \node[state] (s_4) [below=2.5cm of s_3] {$s_4$};
-  \node[state, accepting] (geq) [below =1.3cm of eq] {$>=$};
+  \node[state, accepting] (geq) [below =1.3cm of lss] {$>=$};
   \node[state, accepting] (gtr) [below =1.3cm of geq] {$>$};
   \node[state] (s_5) [below=2.5cm of s_4] {$s_5$};
   \node[state, accepting] (become) [below =1.3cm of gtr] {$:=$};
@@ -330,7 +330,7 @@ there are fourteen (14) more accepting states that correspond to characters: '\c
           edge node [pos= 0.8] {letter} (err_0)
     (s_3) edge node [pos = 0.7] {$=$} (leq)
           edge node [pos = 0.6] {$>$} (neq)
-          edge node {} (eq)
+          edge node {} (lss)
     (s_4) edge node [pos = 0.6] {$=$} (geq)
           edge node {} (gtr)
     (s_5) edge node [pos = 0.5] {$=$} (become)
