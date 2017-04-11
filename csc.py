@@ -118,6 +118,8 @@ class Token():
 
 lineno   = charno = -1  # Current line and character number of input file
 token    = Token(None, None, None, None)
+in_function = []
+have_return = [] # have return statement at specific nested level
 tokens   = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -421,10 +423,20 @@ def varlist():
 
 
 def subprograms():
-    global token
+    global token, have_return, in_function
     while token.tktype == TokenType.PROCSYM or token.tktype == TokenType.FUNCSYM:
+        in_function.append(False)
+        have_return.append(False)
+        if (token.tktype == TokenType.FUNCSYM):
+            in_function[-1] = True
         token = lex()
         func()
+        if in_function.pop() == True:
+            if have_return.pop() == False:
+                perror_line_exit(4, token.tkl, token.tkc,
+                    'Expected return statement in function body')
+        else:
+            have_return.pop()
 
 
 def func():
@@ -518,7 +530,7 @@ def brack_or_stat():
 
 
 def statement():
-    global token
+    global token, have_return
     if token.tktype == TokenType.IDENT:
         token = lex()
         assignment_stat()
@@ -539,6 +551,11 @@ def statement():
         # No need to define exit_stat();
         # only to consume token.
     elif token.tktype == TokenType.RETURNSYM:
+        if in_function == [] or in_function[-1] == False:
+            perror_line_exit(4, token.tkl, token.tkc,
+                'Encountered \'return\' outside of function definition')
+        else:
+            have_return[-1] = True
         token = lex()
         return_stat()
     elif token.tktype == TokenType.PRINTSYM:
