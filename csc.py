@@ -119,6 +119,7 @@ class Token():
 lineno   = charno = -1  # Current line and character number of input file
 token    = Token(None, None, None, None)
 in_function = []
+in_dowhile  = []
 have_return = [] # have return statement at specific nested level
 tokens   = {
     '(':          TokenType.LPAREN,
@@ -547,6 +548,9 @@ def statement():
         token = lex()
         select_stat()
     elif token.tktype == TokenType.EXITSYM:
+        if in_dowhile == []:
+            perror_line_exit(4, token.tkl, token.tkc,
+                'Encountered \'exit\' outside of a do-while loop')
         token = lex()
         # No need to define exit_stat();
         # only to consume token.
@@ -666,7 +670,8 @@ def select_stat():
 
 
 def do_while_stat():
-    global token
+    global token, in_dowhile
+    in_dowhile.append(True)
     brack_or_stat()
     if token.tktype == TokenType.WHILESYM:
         token = lex()
@@ -684,6 +689,7 @@ def do_while_stat():
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'while\' token but found \'%s\' instead' % token.tkval)
+    in_dowhile.pop()
 
 
 def return_stat():
