@@ -758,7 +758,8 @@ def return_stat():
     global token
     if token.tktype == TokenType.LPAREN:
         token = lex()
-        expression()
+        exp   = expression()
+        gen_quad('retv', exp)
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
@@ -773,7 +774,8 @@ def print_stat():
     global token
     if token.tktype == TokenType.LPAREN:
         token = lex()
-        expression()
+        exp   = expression()
+        gen_quad('out', exp)
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
