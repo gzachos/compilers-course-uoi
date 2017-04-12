@@ -110,6 +110,16 @@ class Token():
             + '\', ' + str(self.tkl) + ', ' + str(self.tkc) + ')'
 
 
+class Quad():
+    def __init__(self, label, op, arg1, arg2, res):
+        self.label, self.op, self.arg1, self.arg2 = label, op, arg1, arg2
+        self.res = res
+
+    def __str__(self):
+        return '(' + str(self.label) + ': ' + str(self.op)+ ', ' + \
+            str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
+
+
 ##############################################################
 #                                                            #
 #         Global data declarations and definitions           #
@@ -121,6 +131,10 @@ token    = Token(None, None, None, None)
 in_function = []
 in_dowhile  = []
 have_return = [] # have return statement at specific nested level
+nextlabel   = 100
+tmpvars     = dict()
+next_tmpvar = 1
+quad_code   = list()
 tokens   = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -350,6 +364,47 @@ def lex():
 #           Syntax analyzer related functions                #
 #                                                            #
 ##############################################################
+
+
+def next_quad():
+    global nextlabel
+    label = nextlabel
+    nextlabel += 10
+    return label
+
+
+def gen_quad(op=None, arg1='_', arg2='_', res='_'):
+    label = next_quad()
+    newquad  = Quad(label, op, arg1, arg2, res)
+    # print(newquad) # TODO remove
+    quad_code.append(newquad)
+
+
+def new_temp():
+    global tmpvars, next_tmpvar
+    key = 'T_'+str(next_tmpvar)
+    tmpvars[key] = None
+    next_tmpvar += 1
+    return key
+
+
+def empty_list():
+    return list()
+
+
+def make_list(label):
+    return list(label)
+
+
+def merge(list1, list2):
+    return list1 + list2
+
+
+def backpatch(somelist, res):
+    global quad_code
+    for quad in quad_code:
+        if quad.label in somelist:
+            quad.res = res
 
 
 # Performs syntax analysis
