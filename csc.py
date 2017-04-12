@@ -376,7 +376,7 @@ def next_quad():
 def gen_quad(op=None, arg1='_', arg2='_', res='_'):
     label = next_quad()
     newquad  = Quad(label, op, arg1, arg2, res)
-    # print(newquad) # TODO remove
+    print(newquad) # TODO remove
     quad_code.append(newquad)
 
 
@@ -425,12 +425,13 @@ def syntax_analyzer():
 
 
 def program():
-    global token
+    global token, mainprog_name
     if token.tktype == TokenType.PROGRAMSYM:
         token = lex()
         if token.tktype == TokenType.IDENT:
+            mainprog_name = name = token.tkval
             token = lex()
-            block();
+            block(name);
         else:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected program name but found \'%s\' instead' % token.tkval)
@@ -438,8 +439,9 @@ def program():
         perror_exit(3, 'Missing \'program\' keyword')
 
 
-def block():
+def block(name):
     global token
+    gen_quad('begin_block', name)
     if token.tktype == TokenType.LBRACE:
         token = lex()
         declarations()
@@ -452,6 +454,9 @@ def block():
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected block start (\'{\') but found \'%s\' instead' % token.tkval)
+    if name == mainprog_name:
+        gen_quad('halt')
+    gen_quad('end_block', name)
 
 
 def declarations():
@@ -498,16 +503,17 @@ def subprograms():
 def func():
     global token
     if token.tktype == TokenType.IDENT:
+        name = token.tkval
         token = lex()
-        funcbody()
+        funcbody(name)
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected procedure/function name but found \'%s\' instead' % token.tkval)
 
 
-def funcbody():
+def funcbody(name):
     formalpars()
-    block()
+    block(name)
 
 
 def formalpars():
@@ -588,8 +594,10 @@ def brack_or_stat():
 def statement():
     global token, have_return
     if token.tktype == TokenType.IDENT:
+        lhand = token.tkval
         token = lex()
-        assignment_stat()
+        rhand = assignment_stat()
+        gen_quad(':=', rhand, '_', lhand)
     elif token.tktype == TokenType.IFSYM:
         token = lex()
         if_stat()
@@ -629,7 +637,7 @@ def assignment_stat():
     global token
     if token.tktype == TokenType.BECOMES:
         token = lex()
-        expression()
+        return expression()
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \':=\' but found \'%s\' instead' % token.tkval)
@@ -780,8 +788,10 @@ def print_stat():
 def call_stat():
     global token
     if token.tktype == TokenType.IDENT:
-        token = lex()
+        procid = token.tkval
+        token  = lex()
         actualpars()
+        gen_quad('call', procid)
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected procedure name but found \'%s\' instead' % token.tkval)
@@ -797,6 +807,7 @@ def actualpars():
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
+        return True
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'(\' after procedure/function name but found \'%s\' instead'
@@ -815,13 +826,16 @@ def actualparitem():
     global token
     if token.tktype == TokenType.INSYM:
         token = lex()
-        expression()
+        exp   = expression()
+        gen_quad('par', exp, 'cv')
     elif token.tktype == TokenType.INOUTSYM:
         token = lex()
+        parid = token.tkval
         if token.tktype != TokenType.IDENT:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected variable identifier but found \'%s\' instead' % token.tkval)
         token = lex()
+        gen_quad('par', parid, 'ref')
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected parameter type but found \'%s\' instead' % token.tkval)
@@ -872,38 +886,59 @@ def boolfactor():
 
 
 def expression():
-    optional_sign()
-    term()
+    opsign = optional_sign()
+    term1  = term()
     while token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
-        add_oper()
-        term()
+        op     = add_oper()
+        term2  = term()
+        tmpvar = new_temp()
+        gen_quad(op, term1, term2, tmpvar)
+        term1 = tmpvar
+    # unary minus
+    if opsign != None:
+        signtmp = new_temp()
+        gen_quad('-', 0, term1, signtmp)
+        term1 = signtmp
+    # print("retval = ", term1) # TODO remove
+    return term1
 
 
 def term():
-    factor()
+    factor1 = factor()
     while token.tktype == TokenType.TIMES or token.tktype == TokenType.SLASH:
-        mul_oper()
-        factor()
+        op      = mul_oper()
+        factor2 = factor()
+        tmpvar  = new_temp()
+        gen_quad(op, factor1, factor2, tmpvar)
+        factor1 = tmpvar
+    return factor1
 
 
 def factor():
     global token
     if token.tktype == TokenType.NUMBER or token.tktype == TokenType.PLUS or \
             token.tktype == TokenType.MINUS:
-        number_const()
+        retval = number_const()
     elif token.tktype == TokenType.LPAREN:
-        token = lex()
-        expression()
+        token  = lex()
+        retval = expression()
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
     elif token.tktype == TokenType.IDENT:
-        token = lex()
-        idtail()
+        retval = token.tkval
+        token  = lex()
+        tail   = idtail()
+        if tail != None:
+            funcret = new_temp()
+            gen_quad('par', funcret, 'ret')
+            gen_quad('call', retval)
+            retval = funcret
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected factor but found \'%s\' instead' % token.tkval)
+    return retval
 
 
 # Custom function that returns the numeric value
@@ -929,38 +964,44 @@ def number_const():
 
 def idtail():
     if token.tktype == TokenType.LPAREN:
-        actualpars()
+        return actualpars()
 
 
 def relational_oper():
     global token
+    op = token.tkval
     if token.tktype != TokenType.EQL and token.tktype != TokenType.LSS and \
             token.tktype != TokenType.LEQ and token.tktype != TokenType.NEQ and \
             token.tktype != TokenType.GEQ and token.tktype != TokenType.GTR:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected relational operator but found \'%s\' instead' % token.tkval)
     token = lex()
+    return op
 
 
 def add_oper():
     global token
+    op = token.tkval
     if token.tktype != TokenType.PLUS and token.tktype != TokenType.MINUS:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'+\' or \'-\' but found \'%s\' instead' % token.tkval)
     token = lex()
+    return op
 
 
 def mul_oper():
     global token
+    op = token.tkval
     if token.tktype != TokenType.TIMES and token.tktype != TokenType.SLASH:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'*\' or \'/\' but found \'%s\' instead' % token.tkval)
     token = lex()
+    return op
 
 
 def optional_sign():
     if token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
-        add_oper()
+        return add_oper()
 
 
 ##############################################################
