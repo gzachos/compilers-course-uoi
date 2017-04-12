@@ -367,14 +367,13 @@ def lex():
 
 
 def next_quad():
-    global nextlabel
-    label = nextlabel
-    nextlabel += 10
-    return label
+    return nextlabel
 
 
 def gen_quad(op=None, arg1='_', arg2='_', res='_'):
-    label = next_quad()
+    global nextlabel
+    label = nextlabel
+    nextlabel += 10
     newquad  = Quad(label, op, arg1, arg2, res)
     print(newquad) # TODO remove
     quad_code.append(newquad)
