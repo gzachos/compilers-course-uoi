@@ -679,14 +679,18 @@ def elsepart():
 
 def while_stat():
     global token
+    b_quad = next_quad()
     if token.tktype == TokenType.LPAREN:
         token = lex()
-        condition()
+        (b_true, b_false) = condition()
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
+        backpatch(b_true, next_quad())
         brack_or_stat()
+        gen_quad('jump','_','_',b_quad)
+        backpatch(b_false, next_quad())
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'(\' after \'while\' but found \'%s\' instead'
@@ -746,15 +750,18 @@ def select_stat():
 def do_while_stat():
     global token, in_dowhile
     in_dowhile.append(True)
+    s_quad = next_quad()
     brack_or_stat()
     if token.tktype == TokenType.WHILESYM:
         token = lex()
         if token.tktype == TokenType.LPAREN:
             token = lex()
-            condition()
+            (c_true, c_false) = condition()
             if token.tktype != TokenType.RPAREN:
                 perror_line_exit(3, token.tkl, token.tkc,
                     'Expected \')\' but found \'%s\' instead' % token.tkval)
+            backpatch(c_false, s_quad)
+            backpatch(c_true, next_quad())
             token = lex()
         else:
             perror_line_exit(3, token.tkl, token.tkc,
