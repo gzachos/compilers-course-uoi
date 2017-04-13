@@ -447,11 +447,11 @@ def program():
 
 def block(name):
     global token
-    gen_quad('begin_block', name)
     if token.tktype == TokenType.LBRACE:
         token = lex()
         declarations()
         subprograms()
+        gen_quad('begin_block', name)
         sequence()
         if token.tktype != TokenType.RBRACE:
             perror_line_exit(3, token.tkl, token.tkc,
