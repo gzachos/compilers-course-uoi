@@ -131,7 +131,7 @@ token    = Token(None, None, None, None)
 in_function = []
 in_dowhile  = []
 have_return = [] # have return statement at specific nested level
-nextlabel   = 100
+nextlabel   = 1
 tmpvars     = dict()
 next_tmpvar = 1
 quad_code   = list()
@@ -373,9 +373,8 @@ def next_quad():
 def gen_quad(op=None, arg1='_', arg2='_', res='_'):
     global nextlabel
     label = nextlabel
-    nextlabel += 10
+    nextlabel += 1
     newquad  = Quad(label, op, arg1, arg2, res)
-    print(newquad) # TODO remove
     quad_code.append(newquad)
 
 
@@ -392,7 +391,9 @@ def empty_list():
 
 
 def make_list(label):
-    return list(label)
+    newlist = list()
+    newlist.append(label)
+    return newlist
 
 
 def merge(list1, list2):
@@ -406,6 +407,11 @@ def backpatch(somelist, res):
             quad.res = res
 
 
+def print_int_code():
+    for quad in quad_code:
+        print(quad)
+
+
 # Performs syntax analysis
 def syntax_analyzer():
     global token
@@ -416,6 +422,7 @@ def syntax_analyzer():
     if token.tktype != TokenType.EOF:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
+    print_int_code() # TODO remove
 
 
 # The following functions implement the syntax rules of CiScal grammar rev.3
@@ -646,13 +653,18 @@ def if_stat():
     global token
     if token.tktype == TokenType.LPAREN:
         token = lex()
-        condition()
+        (b_true, b_false) = condition()
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
         token = lex()
+        backpatch(b_true, next_quad())
         brack_or_stat()
+        if_list = make_list(next_quad())
+        gen_quad('jump')
+        backpatch(b_false, next_quad())
         elsepart()
+        backpatch(if_list, next_quad())
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'(\' after \'if\' but found \'%s\' instead' % token.tkval)
@@ -844,18 +856,26 @@ def actualparitem():
 
 def condition():
     global token
-    boolterm()
+    (b_true, b_false) = (q1_true, q1_false) = boolterm()
     while token.tktype == TokenType.ORSYM:
+        backpatch(b_false, next_quad())
         token = lex()
-        boolterm()
+        (q2_true, q2_false) = boolterm()
+        b_true  = merge(b_true, q2_true)
+        b_false = q2_false
+    return (b_true, b_false)
 
 
 def boolterm():
     global token
-    boolfactor()
+    (q_true, q_false) = (r1_true, r1_false) = boolfactor()
     while token.tktype == TokenType.ANDSYM:
+        backpatch(q_true, next_quad())
         token = lex()
-        boolfactor()
+        (r2_true, r2_false) = boolfactor()
+        q_false = merge(q_false, r2_false)
+        q_true  = r2_true
+    return (q_true, q_false)
 
 
 def boolfactor():
@@ -864,7 +884,8 @@ def boolfactor():
         token = lex()
         if token.tktype == TokenType.LBRACKET:
             token = lex()
-            condition()
+            retval = condition()
+            retval = retval[::-1] # reverse lists
             if token.tktype != TokenType.RBRACKET:
                 perror_line_exit(3, token.tkl, token.tkc,
                     'Expected \']\' but found \'%s\' instead' % token.tkval)
@@ -875,15 +896,21 @@ def boolfactor():
                 % token.tkval)
     elif token.tktype == TokenType.LBRACKET:
         token = lex()
-        condition()
+        retval = condition()
         if token.tktype != TokenType.RBRACKET:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \']\' but found \'%s\' instead' % token.tkval)
         token = lex()
     else:
-        expression()
-        relational_oper()
-        expression()
+        exp1   = expression()
+        op     = relational_oper()
+        exp2   = expression()
+        r_true = make_list(next_quad())
+        gen_quad(op, exp1, exp2)
+        r_false = make_list(next_quad())
+        gen_quad('jump')
+        retval = (r_true, r_false)
+    return retval
 
 
 def expression():
