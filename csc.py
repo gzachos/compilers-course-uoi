@@ -660,11 +660,11 @@ def if_stat():
         token = lex()
         backpatch(b_true, next_quad())
         brack_or_stat()
-        if_list = make_list(next_quad())
+        skip_list = make_list(next_quad())
         gen_quad('jump')
         backpatch(b_false, next_quad())
         elsepart()
-        backpatch(if_list, next_quad())
+        backpatch(skip_list, next_quad())
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'(\' after \'if\' but found \'%s\' instead' % token.tkval)
@@ -760,8 +760,8 @@ def do_while_stat():
             if token.tktype != TokenType.RPAREN:
                 perror_line_exit(3, token.tkl, token.tkc,
                     'Expected \')\' but found \'%s\' instead' % token.tkval)
-            backpatch(c_false, s_quad)
-            backpatch(c_true, next_quad())
+            backpatch(c_true, s_quad)
+            backpatch(c_false, next_quad())
             token = lex()
         else:
             perror_line_exit(3, token.tkl, token.tkc,
