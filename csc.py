@@ -856,7 +856,7 @@ def actualparitem():
     if token.tktype == TokenType.INSYM:
         token = lex()
         exp   = expression()
-        gen_quad('par', exp, 'cv')
+        gen_quad('par', exp, 'CV')
     elif token.tktype == TokenType.INOUTSYM:
         token = lex()
         parid = token.tkval
@@ -864,7 +864,7 @@ def actualparitem():
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected variable identifier but found \'%s\' instead' % token.tkval)
         token = lex()
-        gen_quad('par', parid, 'ref')
+        gen_quad('par', parid, 'REF')
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected parameter type but found \'%s\' instead' % token.tkval)
@@ -932,17 +932,17 @@ def boolfactor():
 def expression():
     opsign = optional_sign()
     term1  = term()
+    # unary minus
+    if opsign != None:
+        signtmp = new_temp()
+        gen_quad('-', 0, term1, signtmp)
+        term1 = signtmp
     while token.tktype == TokenType.PLUS or token.tktype == TokenType.MINUS:
         op     = add_oper()
         term2  = term()
         tmpvar = new_temp()
         gen_quad(op, term1, term2, tmpvar)
         term1 = tmpvar
-    # unary minus
-    if opsign != None:
-        signtmp = new_temp()
-        gen_quad('-', 0, term1, signtmp)
-        term1 = signtmp
     # print("retval = ", term1) # TODO remove
     return term1
 
@@ -976,7 +976,7 @@ def factor():
         tail   = idtail()
         if tail != None:
             funcret = new_temp()
-            gen_quad('par', funcret, 'ret')
+            gen_quad('par', funcret, 'RET')
             gen_quad('call', retval)
             retval = funcret
     else:
