@@ -706,20 +706,32 @@ def select_stat():
     if token.tktype == TokenType.LPAREN:
         token = lex()
         if token.tktype == TokenType.IDENT:
+            id = token.tkval
             token = lex()
             if token.tktype == TokenType.RPAREN:
                 token = lex()
                 const = 1
+                exit_list = empty_list()
                 while token.tktype == TokenType.NUMBER:
-                    if int(token.tkval) != const:
+                    number = int(token.tkval)
+                    if number != const:
                         perror_line_exit(3, token.tkl, token.tkc,
                             'Expected \'%d\' as case constant but found \'%s\' instead'
                             % (const,token.tkval))
                     const += 1
                     token = lex()
                     if token.tktype == TokenType.COLON:
+                        true_list = make_list(next_quad())
+                        gen_quad('=', id, number)
+                        false_list = make_list(next_quad())
+                        gen_quad('jump')
+                        backpatch(true_list, next_quad())
                         token = lex()
                         brack_or_stat()
+                        tmp_list = make_list(next_quad())
+                        gen_quad('jump')
+                        exit_list = merge(exit_list, tmp_list)
+                        backpatch(false_list, next_quad())
                     else:
                         perror_line_exit(3, token.tkl, token.tkc,
                             'Expected \':\' after case constant but found \'%s\' instead'
@@ -729,6 +741,7 @@ def select_stat():
                     if token.tktype == TokenType.COLON:
                         token = lex()
                         brack_or_stat()
+                        backpatch(exit_list, next_quad())
                     else:
                         perror_line_exit(3, token.tkl, token.tkc,
                             'Expected \':\' after default keyword but found \'%s\' instead'
