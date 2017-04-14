@@ -128,14 +128,15 @@ class Quad():
 
 lineno   = charno = -1  # Current line and character number of input file
 token    = Token(None, None, None, None)
-in_function = []
-in_dowhile  = []
-have_return = [] # have return statement at specific nested level
-nextlabel   = 1
-tmpvars     = dict()
-next_tmpvar = 1
-quad_code   = list()
-tokens   = {
+in_function  = []
+in_dowhile   = []
+exit_dowhile = []
+have_return  = [] # have return statement at specific nested level
+nextlabel    = 1
+tmpvars      = dict()
+next_tmpvar  = 1
+quad_code    = list()
+tokens       = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
     '{':          TokenType.LBRACE,
@@ -620,6 +621,9 @@ def statement():
         if in_dowhile == []:
             perror_line_exit(4, token.tkl, token.tkc,
                 'Encountered \'exit\' outside of a do-while loop')
+        e_list = make_list(next_quad())
+        gen_quad('jump')
+        exit_dowhile[-1] = e_list
         token = lex()
         # No need to define exit_stat();
         # only to consume token.
@@ -748,8 +752,9 @@ def select_stat():
 
 
 def do_while_stat():
-    global token, in_dowhile
+    global token, in_dowhile, exit_dowhile
     in_dowhile.append(True)
+    exit_dowhile.append(None)
     s_quad = next_quad()
     brack_or_stat()
     if token.tktype == TokenType.WHILESYM:
@@ -761,7 +766,8 @@ def do_while_stat():
                 perror_line_exit(3, token.tkl, token.tkc,
                     'Expected \')\' but found \'%s\' instead' % token.tkval)
             backpatch(c_true, s_quad)
-            backpatch(c_false, next_quad())
+            e_quad = next_quad()
+            backpatch(c_false, e_quad)
             token = lex()
         else:
             perror_line_exit(3, token.tkl, token.tkc,
@@ -770,6 +776,9 @@ def do_while_stat():
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'while\' token but found \'%s\' instead' % token.tkval)
+    if exit_dowhile[-1] != None:
+        backpatch(exit_dowhile[-1], e_quad)
+    exit_dowhile.pop()
     in_dowhile.pop()
 
 
