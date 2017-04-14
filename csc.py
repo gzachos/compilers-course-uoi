@@ -132,7 +132,7 @@ in_function  = []
 in_dowhile   = []
 exit_dowhile = []
 have_return  = [] # have return statement at specific nested level
-nextlabel    = 1
+nextlabel    = 0
 tmpvars      = dict()
 next_tmpvar  = 1
 quad_code    = list()
@@ -230,13 +230,15 @@ def perror_line_exit(ec, lineno, charno, *args, **kwargs):
 
 
 # Open files
-def open_files(input_file, output_file):
-    global infile, outfile, lineno, charno
+def open_files(input_filename, interm_filename, cequiv_filename, output_filename):
+    global infile, int_file, ceq_file, outfile, lineno, charno
     lineno = 1
     charno = 0
     try:
-        infile = open(input_file, 'r', encoding='utf-8')
-#       outfile = open(output_file, 'w', encoding='utf-8') # TODO uncomment later
+        infile   = open(input_filename,  'r', encoding='utf-8')
+        int_file = open(interm_filename, 'w', encoding='utf-8')
+#       ceq_file = open(cequiv_filename, 'w', encoding='utf-8')
+#       outfile  = open(output_filename, 'w', encoding='utf-8')
     except OSError as oserr:
         if oserr.filename != None:
             perror_exit(oserr.errno, oserr.filename + ':', oserr.strerror)
@@ -320,7 +322,7 @@ def lex():
             else:
                 perror_line_exit(2, lineno, charno, 'Expected \'*\' after \'\\\'')
         elif state == 7:
-            if c == '': # EOF
+            if c == '': # EOFgenerate_int_code_file
                 perror_line_exit(2, cl, cc, 'Unterminated comment')
             elif c == '*':
                 state = 8
@@ -380,7 +382,9 @@ def gen_quad(op=None, arg1='_', arg2='_', res='_'):
 
 
 def new_temp():
-    global tmpvars, next_tmpvar
+    global tmpvars, next_tmpvar# Parse input file and generate:
+#    1. Intermediate code file (.int)
+#    2. Intermediate code equivalent in C file (.c)
     key = 'T_'+str(next_tmpvar)
     tmpvars[key] = None
     next_tmpvar += 1
@@ -408,13 +412,19 @@ def backpatch(somelist, res):
             quad.res = res
 
 
+# TODO remove (?)
 def print_int_code():
     for quad in quad_code:
         print(quad)
 
 
-# Performs syntax analysis
-def syntax_analyzer():
+def generate_int_code_file():
+    for quad in quad_code:
+        int_file.write(str(quad) + '\n')
+    int_file.close()
+
+
+def parser():
     global token
     token = lex()
     program()
@@ -423,7 +433,8 @@ def syntax_analyzer():
     if token.tktype != TokenType.EOF:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
-    print_int_code() # TODO remove
+    # print_int_code() # TODO remove
+    generate_int_code_file()
 
 
 # The following functions implement the syntax rules of CiScal grammar rev.3
@@ -956,7 +967,6 @@ def expression():
         tmpvar = new_temp()
         gen_quad(op, term1, term2, tmpvar)
         term1 = tmpvar
-    # print("retval = ", term1) # TODO remove
     return term1
 
 
@@ -1093,8 +1103,10 @@ def print_version():
 # Implements the command line interface and triggers the
 # different stages of the compilation process.
 def main(argv):
-    input_file  = ''
-    output_file = ''
+    input_filename  = ''
+    interm_filename = ''
+    cequiv_filename = ''
+    output_filename = ''
 
     try:
         opts, args = getopt.getopt(argv,"hvICo::i:",["help", "version", "interm",
@@ -1112,27 +1124,29 @@ def main(argv):
         elif opt in ("-v", "--version"):
             print_version()
         elif opt in ("-i", "--input"):
-            input_file = arg
+            input_filename = arg
         elif opt in ("-o", "--output"):
-            output_file = arg
+            output_filename = arg
         elif opt in ("-I", "--interm", "-C", "--c-equiv", "--save-temps"):
             pwarn("%s: Currently unavailable option" % opt)
 
-    if input_file == '':
+    if input_filename == '':
         perror('Option {-i|--input} is required')
         print_usage(1)
-    elif input_file[-4:] != '.csc':
-        perror(input_file + ': invalid file type')
+    elif input_filename[-4:] != '.csc':
+        perror(input_filename + ': invalid file type')
         perror_exit(1, 'INFILE should have a \'.csc\' extension')
 
-    if output_file == '':
-        output_file = input_file[:-4] + '.asm'
+    interm_filename = input_filename[:-4] + '.int'
+    cequiv_filename = input_filename[:-4] + '.c'
+    if output_filename == '':
+        output_filename = input_filename[:-4] + '.asm'
 
-    if os.path.isfile(output_file):
-        pwarn(output_file + ': exists and will be overwritten!')
+    if os.path.isfile(output_filename):
+        pwarn(output_filename + ': exists and will be overwritten!')
 
-    open_files(input_file, output_file)
-    syntax_analyzer()
+    open_files(input_filename, interm_filename, cequiv_filename, output_filename)
+    parser()
 
 
 if __name__ == "__main__":
