@@ -119,6 +119,10 @@ class Quad():
         return '(' + str(self.label) + ': ' + str(self.op)+ ', ' + \
             str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
 
+    def tofile(self):
+        return str(self.label) + ': (' + str(self.op)+ ', ' + \
+            str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
+
 
 ##############################################################
 #                                                            #
@@ -420,7 +424,7 @@ def print_int_code():
 
 def generate_int_code_file():
     for quad in quad_code:
-        int_file.write(str(quad) + '\n')
+        int_file.write(quad.tofile() + '\n')
     int_file.close()
 
 
