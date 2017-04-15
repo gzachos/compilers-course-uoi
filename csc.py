@@ -250,6 +250,11 @@ def open_files(input_filename, interm_filename, cequiv_filename, output_filename
             perror_exit(oserr.errno, oserr)
 
 
+def close_files():
+    global infile
+    infile.close()
+
+
 ##############################################################
 #                                                            #
 #           Lexical analyzer related functions               #
@@ -326,7 +331,7 @@ def lex():
             else:
                 perror_line_exit(2, lineno, charno, 'Expected \'*\' after \'\\\'')
         elif state == 7:
-            if c == '': # EOFgenerate_int_code_file
+            if c == '': # EOF
                 perror_line_exit(2, cl, cc, 'Unterminated comment')
             elif c == '*':
                 state = 8
@@ -368,7 +373,7 @@ def lex():
 
 ##############################################################
 #                                                            #
-#           Syntax analyzer related functions                #
+#           Intermediate code related functions              #
 #                                                            #
 ##############################################################
 
@@ -386,9 +391,7 @@ def gen_quad(op=None, arg1='_', arg2='_', res='_'):
 
 
 def new_temp():
-    global tmpvars, next_tmpvar# Parse input file and generate:
-#    1. Intermediate code file (.int)
-#    2. Intermediate code equivalent in C file (.c)
+    global tmpvars, next_tmpvar
     key = 'T_'+str(next_tmpvar)
     tmpvars[key] = None
     next_tmpvar += 1
@@ -426,6 +429,13 @@ def generate_int_code_file():
     for quad in quad_code:
         int_file.write(quad.tofile() + '\n')
     int_file.close()
+
+
+##############################################################
+#                                                            #
+#                 Parser related functions                   #
+#                                                            #
+##############################################################
 
 
 def parser():
@@ -1151,6 +1161,7 @@ def main(argv):
 
     open_files(input_filename, interm_filename, cequiv_filename, output_filename)
     parser()
+    close_files()
 
 
 if __name__ == "__main__":
