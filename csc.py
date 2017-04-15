@@ -433,14 +433,16 @@ def find_var_decl(quad):
         q = quad_code[index]
         if q.op == 'end_block':
             break
-        if isinstance(q.arg1, str):
-            vars[q.arg1] = 'int'
-        if isinstance(q.arg2, str):
-            vars[q.arg2] = 'int'
-        if isinstance(q.res, str):
-            vars[q.res] = 'int'
+        if q.arg2 not in ('CV', 'REF', 'RET') and q.op != 'call':
+            if isinstance(q.arg1, str):
+                vars[q.arg1] = 'int'
+            if isinstance(q.arg2, str):
+                vars[q.arg2] = 'int'
+            if isinstance(q.res, str):
+                vars[q.res] = 'int'
         index += 1
-    del vars['_']
+    if '_' in vars:
+        del vars['_']
     return OrderedDict(sorted(vars.items()))
 
 
@@ -448,7 +450,7 @@ def transform_decls(vars):
     flag = False
     retval = '\n\tint '
     for var in vars:
-        flat = True
+        flag = True
         retval += var + ', '
     if flag == True:
         return retval[:-2] + ';'
@@ -486,15 +488,16 @@ def transform_to_c(quad):
         vars = find_var_decl(quad)
         retval += transform_decls(vars)
     elif quad.op == 'call':
-        retval = op.arg1 + '();'
+        retval = quad.arg1 + '();'
     elif quad.op == 'end_block':
         addlabel = False
-        retval = '}\n'
+        retval = '\tL_' + str(quad.label) + ': {}\n'
+        retval += '}\n'
     elif quad.op == 'halt':
         retval = 'return 0;' # change to exit() if arbitrary
                              # halt statements are enabled.
     else:
-        return ''
+        return None
     if addlabel == True:
         retval = '\tL_' + str(quad.label) + ': ' + retval
     return retval
@@ -506,7 +509,9 @@ def generate_c_code_file():
     print(' *     CiScal Compiler', __version__)
     print(' */\n')
     for quad in quad_code:
-        print(transform_to_c(quad))
+        tmp = transform_to_c(quad)
+        if tmp != None:
+            print(tmp)
 
 
 ##############################################################
