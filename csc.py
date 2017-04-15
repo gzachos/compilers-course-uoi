@@ -445,10 +445,15 @@ def find_var_decl(quad):
 
 
 def transform_decls(vars):
+    flag = False
     retval = '\n\tint '
     for var in vars:
+        flat = True
         retval += var + ', '
-    return retval[:-2] + ';'
+    if flag == True:
+        return retval[:-2] + ';'
+    else:
+        return ''
 
 
 def transform_to_c(quad):
@@ -484,10 +489,12 @@ def transform_to_c(quad):
         retval = op.arg1 + '();'
     elif quad.op == 'end_block':
         addlabel = False
-        retval = '}'
+        retval = '}\n'
     elif quad.op == 'halt':
         retval = 'return 0;' # change to exit() if arbitrary
                              # halt statements are enabled.
+    else:
+        return ''
     if addlabel == True:
         retval = '\tL_' + str(quad.label) + ': ' + retval
     return retval
