@@ -456,7 +456,12 @@ def transform_to_c(quad):
     if quad.op == 'jump':
         retval = 'goto L_' + str(quad.res) + ';'
     elif quad.op in ('=', '<>', '<', '<=', '>', '>='):
-        retval = 'if (' + str(quad.arg1) + ' ' + quad.op + ' ' + \
+        op = quad.op
+        if op == '=':
+            op = '=='
+        elif op == '<>':
+            op = '!='
+        retval = 'if (' + str(quad.arg1) + ' ' + op + ' ' + \
             str(quad.arg2) + ') goto L_' + str(quad.res) + ';'
     elif quad.op == ':=':
         retval = quad.res + ' = ' + str(quad.arg1) + ';'
