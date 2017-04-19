@@ -497,6 +497,7 @@ def new_temp():
     global tmpvars, next_tmpvar
     key = 'T_'+str(next_tmpvar)
     tmpvars[key] = None
+    scopes[-1].addEntity(TmpVar(key))
     next_tmpvar += 1
     return key
 
@@ -735,6 +736,7 @@ def block(name):
     if name == mainprog_name:
         gen_quad('halt')
     gen_quad('end_block', name)
+    print_scopes()
     scopes.pop()
 
 
@@ -794,8 +796,8 @@ def func():
 
 def funcbody(name):
     formalpars(name)
-    func_entity = search_entity(name, "FUNCTION")
-    print_entity(func_entity) # TODO remove
+    #func_entity = search_entity(name, "FUNCTION")
+    #print_entity(func_entity) # TODO remove
     block(name)
 
 
@@ -835,8 +837,9 @@ def formalparitem(func_name):
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected formal parameter name but found \'%s\' instead'
                 % token.tkval)
-        name = token.tkval # TODO remove (?)
+        name = token.tkval
         add_func_arg(func_name, par_mode)
+        scopes[-1].addEntity(Parameter(name, par_mode))
         token = lex()
 
 
