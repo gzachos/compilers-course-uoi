@@ -125,6 +125,107 @@ class Quad():
             str(self.arg1) + ', ' + str(self.arg2) + ', ' + str(self.res) + ')'
 
 
+class Scope():
+    def __init__(self, nested_level=1, enclosing_scope=None):
+        self.entities, self.nested_level = list(), nested_level # TODO make entities pointer (?)
+        self.enclosing_scope = enclosing_scope
+    #    print('    ' * (nested_level-1) + str(self))
+
+    def setNestedLevel(self, nested_level): # TODO remove (?)
+        self.nested_level = nested_level
+
+    def setStackPtr(self, stack_ptr):
+        self.stack_ptr = stack_ptr
+
+    def addEntity(self, entity):
+        self.entities.append(entity)
+
+    def __str__(self):
+        return self.__repr__() + ': (' + str(self.nested_level) + ', ' + \
+            self.enclosing_scope.__repr__() + ')'
+
+
+class Argument():
+    def __init__(self, par_mode, next_arg=None):
+        self.par_mode = par_mode
+        self.next_arg = next_arg
+
+    def set_next(self, next_arg):
+        self.next_arg = next_arg
+
+    def __str__(self):
+        return self.__repr__() + ': (' + self.par_mode + ',\t' + \
+            self.next_arg.__repr__() + ')'
+
+
+def print_entity(entity):
+    level = scopes[-1].nested_level - 1
+    if level == 1:
+        print('* main scope\n|')
+    print('|    ' * level + str(entity))
+    if isinstance(entity, Function):
+        for arg in entity.args:
+            print('|    ' * level + '|   ' + str(arg))
+
+
+class Entity():
+    def __init__(self, name, etype):
+        self.name, self.etype, self.next = name, etype, None
+
+    def set_next(self, next_entity):
+        self.next = next_entity
+
+    def __str__(self):
+        return self.etype + ': ' + self.name
+
+
+class Variable(Entity):
+    def __init__(self, name, offset=-1):
+        super().__init__(name, "VARIABLE")
+        self.offset = offset
+        #print_entity(self)
+
+    def __str__(self):
+        return super().__str__() + ', offset: ' + \
+            str(self.offset)
+
+
+class Function(Entity):
+    def __init__(self, name, ret_type, start_quad):
+        super().__init__(name, "FUNCTION")
+        self.ret_type, self.start_quad = ret_type, start_quad
+        self.args, self.framelength = list(), -1 # TODO make args pointer (?)
+        #print_entity(self)
+
+    def add_arg(self, arg):
+        self.args.append(arg)
+
+    def set_framelen(self, framelength):
+        self.framelength = framelength
+
+    def __str__(self):
+        return super().__str__() + ', retv: ' + self.ret_type \
+            + ', squad: ' + str(self.start_quad)
+
+
+class Parameter(Entity):
+    def __init__(self, name, par_mode, offset=-1):
+        super().__init__(name, "PARAMETER")
+        self.par_mode, self.offset = par_mode, offset
+        #print_entity(self)
+
+    def __str__(self):
+        return super().__str__() + ', mode: ' + self.par_mode \
+            + ', offset: ' + str(self.offset)
+
+
+class TmpVar(Entity):
+    def __init__(self, name, offset=-1):
+        super().__init__(name, "TMPVAR")
+        self.offset = offset
+        #print_entity(self)
+
+
 ##############################################################
 #                                                            #
 #         Global data declarations and definitions           #
@@ -141,6 +242,7 @@ nextlabel    = 0
 tmpvars      = dict()
 next_tmpvar  = 1
 quad_code    = list()
+scopes       = list()
 tokens       = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -514,6 +616,63 @@ def generate_c_code_file():
             print(tmp)
 
 
+def print_scopes():
+    for scope in scopes:
+        level = scope.nested_level - 1
+        print('    ' * level + str(scope))
+        for entity in scope.entities:
+            print('    ' * level + str(entity))
+            if isinstance(entity, Function):
+                for arg in entity.args:
+                    print('    ' * level + '    ' + str(arg))
+    print('\n')
+
+
+def add_new_scope():
+    enclosing_scope = scopes[-1]
+    curr_scope = Scope(enclosing_scope.nested_level + 1, enclosing_scope)
+    scopes.append(curr_scope)
+
+
+# TODO verify
+def add_func_entity(name):
+    if search_entity(name, "FUNCTION") != None:
+        perror_line_exit(5, token.tkl, token.tkc,
+            'Redefinition of \'%s\'' % name)
+    if in_function[-1] == True:
+        ret_type = "int"
+    else:
+        ret_type = "void"
+    scopes[-2].addEntity(Function(name, ret_type, next_quad()))
+
+
+# TODO verify
+def add_func_arg(func_name, par_mode):
+    if (par_mode == 'in'):
+        new_arg = Argument('CV')
+    else:
+        new_arg = Argument('REF')
+    func_entity = search_entity(func_name, "FUNCTION")
+    if func_entity == None:
+        perror_line_exit(5, token.tkl, token.tkc,
+            'No definition of \'%s\' was not found' % func_name)
+    if func_entity.args != list():
+        func_entity.args[-1].set_next(new_arg)
+    func_entity.add_arg(new_arg)
+
+
+# TODO verify
+def search_entity(name, etype):
+    if scopes == list():
+        return
+    tmp_scope = scopes[-1]
+    while tmp_scope != None:
+        for entity in tmp_scope.entities:
+            if entity.name == name and entity.etype == etype:
+                return entity
+        tmp_scope = tmp_scope.enclosing_scope
+
+
 ##############################################################
 #                                                            #
 #                 Parser related functions                   #
@@ -531,7 +690,10 @@ def parser():
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
     generate_int_code_file()
-    generate_c_code_file()
+    # generate_c_code_file()
+    #print(issubclass(v.__class__, Entity))
+    #print(isinstance(v, Entity))
+    #print(isinstance(v, Variable))
 
 
 # The following functions implement the syntax rules of CiScal grammar rev.3
@@ -546,7 +708,8 @@ def program():
         if token.tktype == TokenType.IDENT:
             mainprog_name = name = token.tkval
             token = lex()
-            block(name);
+            scopes.append(Scope())
+            block(name)
         else:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected program name but found \'%s\' instead' % token.tkval)
@@ -555,7 +718,7 @@ def program():
 
 
 def block(name):
-    global token
+    global token, scopes
     if token.tktype == TokenType.LBRACE:
         token = lex()
         declarations()
@@ -572,6 +735,7 @@ def block(name):
     if name == mainprog_name:
         gen_quad('halt')
     gen_quad('end_block', name)
+    scopes.pop()
 
 
 def declarations():
@@ -616,10 +780,12 @@ def subprograms():
 
 
 def func():
-    global token
+    global token, scopes
+    add_new_scope()
     if token.tktype == TokenType.IDENT:
         name = token.tkval
         token = lex()
+        add_func_entity(name)
         funcbody(name)
     else:
         perror_line_exit(3, token.tkl, token.tkc,
@@ -627,16 +793,18 @@ def func():
 
 
 def funcbody(name):
-    formalpars()
+    formalpars(name)
+    func_entity = search_entity(name, "FUNCTION")
+    print_entity(func_entity) # TODO remove
     block(name)
 
 
-def formalpars():
+def formalpars(func_name):
     global token
     if token.tktype == TokenType.LPAREN:
         token = lex()
         if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
-            formalparlist()
+            formalparlist(func_name)
         if token.tktype != TokenType.RPAREN:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected \')\' but found \'%s\' instead' % token.tkval)
@@ -646,26 +814,29 @@ def formalpars():
             'Expected \'(\' but found \'%s\' instead' % token.tkval)
 
 
-def formalparlist():
+def formalparlist(func_name):
     global token
-    formalparitem()
+    formalparitem(func_name)
     while token.tktype == TokenType.COMMA:
         token = lex()
         if token.tktype != TokenType.INSYM and token.tktype != TokenType.INOUTSYM:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected formal parameter declaration but found \'%s\' instead'
                 % token.tkval)
-        formalparitem()
+        formalparitem(func_name)
 
 
-def formalparitem():
-    global token
+def formalparitem(func_name):
+    global token, scopes
     if token.tktype == TokenType.INSYM or token.tktype == TokenType.INOUTSYM:
+        par_mode = token.tkval
         token = lex()
         if token.tktype != TokenType.IDENT:
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected formal parameter name but found \'%s\' instead'
                 % token.tkval)
+        name = token.tkval # TODO remove (?)
+        add_func_arg(func_name, par_mode)
         token = lex()
 
 
