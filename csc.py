@@ -127,9 +127,8 @@ class Quad():
 
 class Scope():
     def __init__(self, nested_level=1, enclosing_scope=None):
-        self.entities, self.nested_level = list(), nested_level # TODO make entities pointer (?)
+        self.entities, self.nested_level = list(), nested_level
         self.enclosing_scope = enclosing_scope
-    #    print('    ' * (nested_level-1) + str(self))
 
     def setNestedLevel(self, nested_level): # TODO remove (?)
         self.nested_level = nested_level
@@ -158,16 +157,6 @@ class Argument():
             self.next_arg.__repr__() + ')'
 
 
-def print_entity(entity):
-    level = scopes[-1].nested_level - 1
-    if level == 1:
-        print('* main scope\n|')
-    print('|    ' * level + str(entity))
-    if isinstance(entity, Function):
-        for arg in entity.args:
-            print('|    ' * level + '|   ' + str(arg))
-
-
 class Entity():
     def __init__(self, name, etype):
         self.name, self.etype, self.next = name, etype, None
@@ -183,7 +172,6 @@ class Variable(Entity):
     def __init__(self, name, offset=-1):
         super().__init__(name, "VARIABLE")
         self.offset = offset
-        #print_entity(self)
 
     def __str__(self):
         return super().__str__() + ', offset: ' + \
@@ -194,8 +182,7 @@ class Function(Entity):
     def __init__(self, name, ret_type, start_quad):
         super().__init__(name, "FUNCTION")
         self.ret_type, self.start_quad = ret_type, start_quad
-        self.args, self.framelength = list(), -1 # TODO make args pointer (?)
-        #print_entity(self)
+        self.args, self.framelength = list(), -1
 
     def add_arg(self, arg):
         self.args.append(arg)
@@ -212,7 +199,6 @@ class Parameter(Entity):
     def __init__(self, name, par_mode, offset=-1):
         super().__init__(name, "PARAMETER")
         self.par_mode, self.offset = par_mode, offset
-        #print_entity(self)
 
     def __str__(self):
         return super().__str__() + ', mode: ' + self.par_mode \
@@ -223,7 +209,6 @@ class TmpVar(Entity):
     def __init__(self, name, offset=-1):
         super().__init__(name, "TMPVAR")
         self.offset = offset
-        #print_entity(self)
 
 
 ##############################################################
@@ -617,16 +602,11 @@ def generate_c_code_file():
             print(tmp)
 
 
-def print_scopes():
-    for scope in scopes:
-        level = scope.nested_level - 1
-        print('    ' * level + str(scope))
-        for entity in scope.entities:
-            print('    ' * level + str(entity))
-            if isinstance(entity, Function):
-                for arg in entity.args:
-                    print('    ' * level + '    ' + str(arg))
-    print('\n')
+##############################################################
+#                                                            #
+#             Symbol table related functions                 #
+#                                                            #
+##############################################################
 
 
 def add_new_scope():
@@ -635,9 +615,34 @@ def add_new_scope():
     scopes.append(curr_scope)
 
 
-# TODO verify
+def print_scopes():
+    print('* main scope\n|')
+    for scope in scopes:
+        level = scope.nested_level
+    #   print('    ' * level + str(scope))
+        for entity in scope.entities:
+            print('|    ' * level + str(entity))
+            if isinstance(entity, Function):
+                for arg in entity.args:
+                    print('|    ' * level + '|    ' + str(arg))
+    print('\n')
+
+
+def print_entity(entity):
+    level = scopes[-1].nested_level - 1
+    if level == 1:
+        print('* main scope\n|')
+    print('|    ' * level + str(entity))
+    if isinstance(entity, Function):
+        for arg in entity.args:
+            print('|    ' * level + '|   ' + str(arg))
+
+
 def add_func_entity(name):
-    if search_entity(name, "FUNCTION") != None:
+    # Function declarations are on the enclosing scope of
+    # the current scope.
+    nested_level = scopes[-1].enclosing_scope.nested_level
+    if not unique_entity(name, "FUNCTION", nested_level):
         perror_line_exit(5, token.tkl, token.tkc,
             'Redefinition of \'%s\'' % name)
     if in_function[-1] == True:
@@ -647,7 +652,14 @@ def add_func_entity(name):
     scopes[-2].addEntity(Function(name, ret_type, next_quad()))
 
 
-# TODO verify
+def add_param_entity(name, par_mode):
+    nested_level = scopes[-1].nested_level
+    if not unique_entity(name, "PARAMETER", nested_level):
+        perror_line_exit(5, token.tkl, token.tkc,
+            'Redefinition of \'%s\'' % name)
+    scopes[-1].addEntity(Parameter(name, par_mode))
+
+
 def add_func_arg(func_name, par_mode):
     if (par_mode == 'in'):
         new_arg = Argument('CV')
@@ -662,16 +674,36 @@ def add_func_arg(func_name, par_mode):
     func_entity.add_arg(new_arg)
 
 
-# TODO verify
 def search_entity(name, etype):
     if scopes == list():
         return
     tmp_scope = scopes[-1]
     while tmp_scope != None:
         for entity in tmp_scope.entities:
+#           print_entity(entity)
             if entity.name == name and entity.etype == etype:
                 return entity
         tmp_scope = tmp_scope.enclosing_scope
+
+
+def unique_entity(name, etype, nested_level):
+    if scopes[-1].nested_level < nested_level:
+        return
+    scope = scopes[nested_level-1]
+#   print('ABOUT TO ADD: ', name)
+    list_len = len(scope.entities)
+    for i in range(list_len):
+#       print(scope.entities[i].name)
+        for j in range(list_len):
+            e1 = scope.entities[i]
+            e2 = scope.entities[j]
+#           print(i,j)
+#           print(e1.name, e2.name, '\n')
+            if e1.name == e2.name and e1.etype == e2.etype \
+                    and e1.name == name and e1.etype == etype:
+#               print('SAME: ' ,e1.name, e2.name)
+                return False
+    return True
 
 
 ##############################################################
@@ -692,9 +724,6 @@ def parser():
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
     generate_int_code_file()
     # generate_c_code_file()
-    #print(issubclass(v.__class__, Entity))
-    #print(isinstance(v, Entity))
-    #print(isinstance(v, Variable))
 
 
 # The following functions implement the syntax rules of CiScal grammar rev.3
@@ -736,7 +765,7 @@ def block(name):
     if name == mainprog_name:
         gen_quad('halt')
     gen_quad('end_block', name)
-    print_scopes()
+#   print_scopes()
     scopes.pop()
 
 
@@ -837,9 +866,9 @@ def formalparitem(func_name):
             perror_line_exit(3, token.tkl, token.tkc,
                 'Expected formal parameter name but found \'%s\' instead'
                 % token.tkval)
-        name = token.tkval
+        par_name = token.tkval
         add_func_arg(func_name, par_mode)
-        scopes[-1].addEntity(Parameter(name, par_mode))
+        add_param_entity(par_name, par_mode)
         token = lex()
 
 
