@@ -660,6 +660,14 @@ def add_param_entity(name, par_mode):
     scopes[-1].addEntity(Parameter(name, par_mode))
 
 
+def add_var_entity(name):
+    nested_level = scopes[-1].nested_level
+    if not unique_entity(name, "VARIABLE", nested_level):
+        perror_line_exit(5, token.tkl, token.tkc,
+            'Redefinition of \'%s\'' % name)
+    scopes[-1].addEntity(Variable(name))
+
+
 def add_func_arg(func_name, par_mode):
     if (par_mode == 'in'):
         new_arg = Argument('CV')
@@ -783,6 +791,7 @@ def declarations():
 def varlist():
     global token
     if token.tktype == TokenType.IDENT:
+        add_var_entity(token.tkval)
         token = lex()
         while token.tktype == TokenType.COMMA:
             token = lex()
@@ -790,6 +799,7 @@ def varlist():
                 perror_line_exit(3, token.tkl, token.tkc,
                     'Expected variable declaration but found \'%s\' instead'
                     % token.tkval)
+            add_var_entity(token.tkval)
             token = lex()
 
 
