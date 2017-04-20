@@ -665,6 +665,9 @@ def add_var_entity(name):
     if not unique_entity(name, "VARIABLE", nested_level):
         perror_line_exit(5, token.tkl, token.tkc,
             'Redefinition of \'%s\'' % name)
+    if var_is_param(name, nested_level):
+        perror_line_exit(5, token.tkl, token.tkc,
+            '\'%s\' redeclared as different kind of symbol' % name)
     scopes[-1].addEntity(Variable(name))
 
 
@@ -712,6 +715,18 @@ def unique_entity(name, etype, nested_level):
 #               print('SAME: ' ,e1.name, e2.name)
                 return False
     return True
+
+
+def var_is_param(name, nested_level):
+    if scopes[-1].nested_level < nested_level:
+        return
+    scope = scopes[nested_level-1]
+    list_len = len(scope.entities)
+    for i in range(list_len):
+        e = scope.entities[i]
+        if e.etype == "PARAMETER" and e.name == name:
+            return True
+    return False
 
 
 ##############################################################
