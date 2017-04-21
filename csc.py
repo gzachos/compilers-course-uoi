@@ -179,7 +179,7 @@ class Variable(Entity):
 
 
 class Function(Entity):
-    def __init__(self, name, ret_type, start_quad):
+    def __init__(self, name, ret_type, start_quad=-1):
         super().__init__(name, "FUNCTION")
         self.ret_type, self.start_quad = ret_type, start_quad
         self.args, self.framelength = list(), -1
@@ -189,6 +189,9 @@ class Function(Entity):
 
     def set_framelen(self, framelength):
         self.framelength = framelength
+
+    def set_start_quad(self, start_quad):
+        self.start_quad = start_quad
 
     def __str__(self):
         return super().__str__() + ', retv: ' + self.ret_type \
@@ -649,7 +652,14 @@ def add_func_entity(name):
         ret_type = "int"
     else:
         ret_type = "void"
-    scopes[-2].addEntity(Function(name, ret_type, next_quad()))
+    scopes[-2].addEntity(Function(name, ret_type))
+
+def update_func_entity_quad(name):
+    if name == mainprog_name:
+        return
+    start_quad = next_quad()
+    func_entity = search_entity(name, "FUNCTION")
+    func_entity.set_start_quad(start_quad)
 
 
 def add_param_entity(name, par_mode):
@@ -776,6 +786,7 @@ def block(name):
         token = lex()
         declarations()
         subprograms()
+        update_func_entity_quad(name)
         gen_quad('begin_block', name)
         sequence()
         if token.tktype != TokenType.RBRACE:
@@ -788,6 +799,7 @@ def block(name):
     if name == mainprog_name:
         gen_quad('halt')
     gen_quad('end_block', name)
+#   print("LEAVING ", name) # TODO remove
 #   print_scopes()
     scopes.pop()
 
