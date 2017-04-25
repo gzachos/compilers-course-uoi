@@ -583,6 +583,7 @@ def transform_to_c(quad):
             retval = 'int ' + quad.arg1 + '()\n{' # FIXME return type & params
         vars = find_var_decl(quad)
         retval += transform_decls(vars)
+        retval += '\n\tL_' + str(quad.label) + ':'
     elif quad.op == 'call':
         retval = quad.arg1 + '();'
     elif quad.op == 'end_block':
@@ -769,7 +770,7 @@ def parser():
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
     generate_int_code_file()
-    # generate_c_code_file()
+    generate_c_code_file()
 
 
 # The following functions implement the syntax rules of CiScal grammar rev.3
