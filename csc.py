@@ -129,6 +129,7 @@ class Scope():
     def __init__(self, nested_level=1, enclosing_scope=None):
         self.entities, self.nested_level = list(), nested_level
         self.enclosing_scope = enclosing_scope
+        self.tmp_offset = 12
 
     def setNestedLevel(self, nested_level): # TODO remove (?)
         self.nested_level = nested_level
@@ -138,6 +139,11 @@ class Scope():
 
     def addEntity(self, entity):
         self.entities.append(entity)
+
+    def get_offset(self):
+        retval = self.tmp_offset
+        self.tmp_offset += 4
+        return retval
 
     def __str__(self):
         return self.__repr__() + ': (' + str(self.nested_level) + ', ' + \
@@ -195,7 +201,8 @@ class Function(Entity):
 
     def __str__(self):
         return super().__str__() + ', retv: ' + self.ret_type \
-            + ', squad: ' + str(self.start_quad)
+            + ', squad: ' + str(self.start_quad) + ', framelen: ' \
+            + str(self.framelength)
 
 
 class Parameter(Entity):
@@ -212,6 +219,9 @@ class TmpVar(Entity):
     def __init__(self, name, offset=-1):
         super().__init__(name, "TMPVAR")
         self.offset = offset
+
+    def __str__(self):
+        return super().__str__() + ', offset: ' + str(self.offset)
 
 
 ##############################################################
@@ -485,7 +495,8 @@ def new_temp():
     global tmpvars, next_tmpvar
     key = 'T_'+str(next_tmpvar)
     tmpvars[key] = None
-    scopes[-1].addEntity(TmpVar(key))
+    offset = scopes[-1].get_offset()
+    scopes[-1].addEntity(TmpVar(key, offset))
     next_tmpvar += 1
     return key
 
@@ -662,23 +673,32 @@ def update_func_entity_quad(name):
     func_entity.set_start_quad(start_quad)
 
 
+def update_func_entity_framelen(name, framelength):
+    if name == mainprog_name:
+        return
+    func_entity = search_entity(name, "FUNCTION")
+    func_entity.set_framelen(framelength)
+
+
 def add_param_entity(name, par_mode):
     nested_level = scopes[-1].nested_level
+    par_offset   = scopes[-1].get_offset()
     if not unique_entity(name, "PARAMETER", nested_level):
         perror_line_exit(5, token.tkl, token.tkc,
             'Redefinition of \'%s\'' % name)
-    scopes[-1].addEntity(Parameter(name, par_mode))
+    scopes[-1].addEntity(Parameter(name, par_mode, par_offset))
 
 
 def add_var_entity(name):
     nested_level = scopes[-1].nested_level
+    var_offset   = scopes[-1].get_offset()
     if not unique_entity(name, "VARIABLE", nested_level):
         perror_line_exit(5, token.tkl, token.tkc,
             'Redefinition of \'%s\'' % name)
     if var_is_param(name, nested_level):
         perror_line_exit(5, token.tkl, token.tkc,
             '\'%s\' redeclared as different kind of symbol' % name)
-    scopes[-1].addEntity(Variable(name))
+    scopes[-1].addEntity(Variable(name, var_offset))
 
 
 def add_func_arg(func_name, par_mode):
@@ -799,6 +819,7 @@ def block(name):
     if name == mainprog_name:
         gen_quad('halt')
     gen_quad('end_block', name)
+    update_func_entity_framelen(name, scopes[-1].tmp_offset)
 #   print("LEAVING ", name) # TODO remove
 #   print_scopes()
     scopes.pop()
