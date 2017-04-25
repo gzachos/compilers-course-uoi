@@ -724,7 +724,7 @@ def search_entity(name, etype):
 def unique_entity(name, etype, nested_level):
     if scopes[-1].nested_level < nested_level:
         return
-    scope = scopes[nested_level-1]
+    scope = scopes[nested_level]
 #   print('ABOUT TO ADD: ', name)
     list_len = len(scope.entities)
     for i in range(list_len):
@@ -744,7 +744,7 @@ def unique_entity(name, etype, nested_level):
 def var_is_param(name, nested_level):
     if scopes[-1].nested_level < nested_level:
         return
-    scope = scopes[nested_level-1]
+    scope = scopes[nested_level]
     list_len = len(scope.entities)
     for i in range(list_len):
         e = scope.entities[i]
