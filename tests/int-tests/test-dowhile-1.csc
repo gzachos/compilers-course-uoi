@@ -14,6 +14,7 @@ program MyProg {
 			exit;
 		};
 		a := a + 1;
+		print(a);
 	}
 	while(10 = 10);
 }

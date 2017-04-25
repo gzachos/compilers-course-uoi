@@ -10,4 +10,5 @@ program myProg {
 	z := 1;
 	w := 2;
 	a := -x + (y + (-z)) * w;
+	print(a);
 }
