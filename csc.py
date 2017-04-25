@@ -161,9 +161,6 @@ class Entity():
     def __init__(self, name, etype):
         self.name, self.etype, self.next = name, etype, None
 
-    def set_next(self, next_entity):
-        self.next = next_entity
-
     def __str__(self):
         return self.etype + ': ' + self.name
 
@@ -637,16 +634,6 @@ def print_scopes():
     print('\n')
 
 
-def print_entity(entity):
-    level = scopes[-1].nested_level - 1
-    if level == 0:
-        print('* main scope\n|')
-    print('|    ' * level + str(entity))
-    if isinstance(entity, Function):
-        for arg in entity.args:
-            print('|    ' * level + '|   ' + str(arg))
-
-
 def add_func_entity(name):
     # Function declarations are on the enclosing scope of
     # the current scope.
@@ -877,8 +864,6 @@ def func():
 
 def funcbody(name):
     formalpars(name)
-    #func_entity = search_entity(name, "FUNCTION")
-    #print_entity(func_entity) # TODO remove
     block(name)
 
 
