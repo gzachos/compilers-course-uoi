@@ -126,16 +126,10 @@ class Quad():
 
 
 class Scope():
-    def __init__(self, nested_level=1, enclosing_scope=None):
+    def __init__(self, nested_level=0, enclosing_scope=None):
         self.entities, self.nested_level = list(), nested_level
         self.enclosing_scope = enclosing_scope
         self.tmp_offset = 12
-
-    def setNestedLevel(self, nested_level): # TODO remove (?)
-        self.nested_level = nested_level
-
-    def setStackPtr(self, stack_ptr):
-        self.stack_ptr = stack_ptr
 
     def addEntity(self, entity):
         self.entities.append(entity)
@@ -632,7 +626,7 @@ def add_new_scope():
 def print_scopes():
     print('* main scope\n|')
     for scope in scopes:
-        level = scope.nested_level
+        level = scope.nested_level + 1
     #   print('    ' * level + str(scope))
         for entity in scope.entities:
             print('|    ' * level + str(entity))
@@ -644,7 +638,7 @@ def print_scopes():
 
 def print_entity(entity):
     level = scopes[-1].nested_level - 1
-    if level == 1:
+    if level == 0:
         print('* main scope\n|')
     print('|    ' * level + str(entity))
     if isinstance(entity, Function):
@@ -721,7 +715,6 @@ def search_entity(name, etype):
     tmp_scope = scopes[-1]
     while tmp_scope != None:
         for entity in tmp_scope.entities:
-#           print_entity(entity)
             if entity.name == name and entity.etype == etype:
                 return entity
         tmp_scope = tmp_scope.enclosing_scope
