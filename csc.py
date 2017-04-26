@@ -25,7 +25,7 @@ import sys, getopt, os
 from enum import Enum
 from collections import OrderedDict
 
-__version__='0.0.1'
+__version__='1.0.0'
 
 
 ##############################################################
@@ -1508,7 +1508,7 @@ def main(argv):
         elif opt in ("-o", "--output"):
             output_filename = arg
         elif opt in ("-I", "--interm", "-C", "--c-equiv", "--save-temps"):
-            pwarn("%s: Currently unavailable option" % opt)
+            pwarn("%s: Enabled by default option" % opt)
 
     if input_filename == '':
         perror('Option {-i|--input} is required')
