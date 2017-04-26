@@ -111,6 +111,10 @@ class Token():
             + '\', ' + str(self.tkl) + ', ' + str(self.tkc) + ')'
 
 
+# The rest of the classes consist the data model required for
+# the implementation of the symbol table.
+
+
 class Quad():
     def __init__(self, label, op, arg1, arg2, res):
         self.label, self.op, self.arg1, self.arg2 = label, op, arg1, arg2
@@ -221,17 +225,23 @@ class TmpVar(Entity):
 #                                                            #
 ##############################################################
 
-lineno   = charno = -1  # Current line and character number of input file
+lineno   = charno = -1  # Current line and character number of input file.
 token    = Token(None, None, None, None)
-in_function  = []
-in_dowhile   = []
-exit_dowhile = []
-have_return  = [] # have return statement at specific nested level
+# in_function, in_dowhile, exit_dowhile and have_return are array
+# structures and each element corresponds to a nested level in case
+# of curly-braced blocks and not function/procedure blocks.
+in_function  = []    # currently inside a function (not procedure).
+in_dowhile   = []    # currently inside a do-while statement.
+exit_dowhile = []    # used to implement exit for a do-while statement.
+have_return  = []    # have return statement at specific nested level.
+have_subprog = False # True if nested functions are defined in user program.
 nextlabel    = 0
-tmpvars      = dict()
-next_tmpvar  = 1
-quad_code    = list()
-scopes       = list()
+tmpvars      = dict() # A dictionary holding temporary variable names
+                      # used in intermediate code generation.
+next_tmpvar  = 1      # Used to implement the naming convention of
+                      # temporary variables.
+quad_code    = list() # The main program equivalent in quadruples.
+scopes       = list() # The list of currently 'active' scopes.
 tokens       = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -283,23 +293,23 @@ tokens       = {
 ##############################################################
 
 
-# Print error message to stderr and exit
+# Print error message to stderr and exit.
 def perror_exit(ec, *args, **kwargs):
     print('[' + clr.ERR + 'ERROR' + clr.END + ']', *args, file=sys.stderr, **kwargs)
     sys.exit(ec)
 
 
-# Print error message to stderr
+# Print error message to stderr.
 def perror(*args, **kwargs):
     print('[' + clr.ERR + 'ERROR' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 
 
-# Print warning to stderr
+# Print warning to stderr.
 def pwarn(*args, **kwargs):
     print('[' + clr.WRN + 'WARNING' + clr.END + ']', *args, file=sys.stderr, **kwargs)
 
 
-# Print line #lineno to stderr with character charno highlighted
+# Print line #lineno to stderr with character charno highlighted.
 def perror_line(lineno, charno):
     currchar = infile.tell()
     infile.seek(0)
@@ -321,11 +331,13 @@ def perror_line_exit(ec, lineno, charno, *args, **kwargs):
         if index == lineno-1:
             print(" ", line.replace('\t', ' ').replace('\n', ''), file=sys.stderr)
             print(clr.GRN + " " * (charno + 1) + '^' + clr.END, file=sys.stderr)
-    infile.seek(currchar)
+    close_files()
+    os.remove(int_file.name)
+    os.remove(ceq_file.name)
     sys.exit(ec)
 
 
-# Open files
+# Open files.
 def open_files(input_filename, interm_filename, cequiv_filename, output_filename):
     global infile, int_file, ceq_file, outfile, lineno, charno
     lineno = 1
@@ -333,7 +345,7 @@ def open_files(input_filename, interm_filename, cequiv_filename, output_filename
     try:
         infile   = open(input_filename,  'r', encoding='utf-8')
         int_file = open(interm_filename, 'w', encoding='utf-8')
-#       ceq_file = open(cequiv_filename, 'w', encoding='utf-8')
+        ceq_file = open(cequiv_filename, 'w', encoding='utf-8')
 #       outfile  = open(output_filename, 'w', encoding='utf-8')
     except OSError as oserr:
         if oserr.filename != None:
@@ -342,9 +354,12 @@ def open_files(input_filename, interm_filename, cequiv_filename, output_filename
             perror_exit(oserr.errno, oserr)
 
 
+# Close files.
 def close_files():
     global infile
     infile.close()
+    int_file.close()
+    ceq_file.close()
 
 
 ##############################################################
@@ -513,12 +528,15 @@ def backpatch(somelist, res):
             quad.res = res
 
 
+# Generate a file containing the intermediate code
+# of the user program.
 def generate_int_code_file():
     for quad in quad_code:
         int_file.write(quad.tofile() + '\n')
     int_file.close()
 
 
+# A naive way to find which variables should be declared.
 def find_var_decl(quad):
     vars = dict()
     index = quad_code.index(quad) + 1
@@ -539,6 +557,7 @@ def find_var_decl(quad):
     return OrderedDict(sorted(vars.items()))
 
 
+# Transform variable declarations to ANSI C equivalent.
 def transform_decls(vars):
     flag = False
     retval = '\n\tint '
@@ -551,6 +570,7 @@ def transform_decls(vars):
         return ''
 
 
+# Transform a quad to ANSI C code.
 def transform_to_c(quad):
     addlabel = True
     if quad.op == 'jump':
@@ -576,12 +596,13 @@ def transform_to_c(quad):
         addlabel = False
         if quad.arg1 == mainprog_name:
             retval = 'int main(void)\n{'
-        else:
-            retval = 'int ' + quad.arg1 + '()\n{' # FIXME return type & params
+        else: # Should never reach else.
+            retval = 'int ' + quad.arg1 + '()\n{'
         vars = find_var_decl(quad)
         retval += transform_decls(vars)
         retval += '\n\tL_' + str(quad.label) + ':'
     elif quad.op == 'call':
+        # Should never reach this line.
         retval = quad.arg1 + '();'
     elif quad.op == 'end_block':
         addlabel = False
@@ -589,7 +610,8 @@ def transform_to_c(quad):
         retval += '}\n'
     elif quad.op == 'halt':
         retval = 'return 0;' # change to exit() if arbitrary
-                             # halt statements are enabled.
+                             # halt statements are enabled
+                             # at a later time.
     else:
         return None
     if addlabel == True:
@@ -597,15 +619,18 @@ def transform_to_c(quad):
     return retval
 
 
+# Generate a file containing the ANSI C equivalent code
+# of intermediate code. This file is ready to compile.
 def generate_c_code_file():
-    print('#include <stdio.h>\n')
-    print('/* This file was automatically generated by:')
-    print(' *     CiScal Compiler', __version__)
-    print(' */\n')
+    ceq_file.write('#include <stdio.h>\n\n')
+    ceq_file.write('/* This file was automatically generated by:\n')
+    ceq_file.write(' *     CiScal Compiler ' + __version__ + '\n')
+    ceq_file.write(' */\n\n')
     for quad in quad_code:
         tmp = transform_to_c(quad)
         if tmp != None:
-            print(tmp)
+            ceq_file.write(tmp + '\n')
+    ceq_file.close()
 
 
 ##############################################################
@@ -615,12 +640,14 @@ def generate_c_code_file():
 ##############################################################
 
 
+# Add a new scope.
 def add_new_scope():
     enclosing_scope = scopes[-1]
     curr_scope = Scope(enclosing_scope.nested_level + 1, enclosing_scope)
     scopes.append(curr_scope)
 
 
+# Print current scope and its enclosing ones.
 def print_scopes():
     print('* main scope\n|')
     for scope in scopes:
@@ -634,6 +661,7 @@ def print_scopes():
     print('\n')
 
 
+# Add a new function entity.
 def add_func_entity(name):
     # Function declarations are on the enclosing scope of
     # the current scope.
@@ -647,6 +675,8 @@ def add_func_entity(name):
         ret_type = "void"
     scopes[-2].addEntity(Function(name, ret_type))
 
+
+# Update the start quad label of a function entity.
 def update_func_entity_quad(name):
     if name == mainprog_name:
         return
@@ -655,6 +685,7 @@ def update_func_entity_quad(name):
     func_entity.set_start_quad(start_quad)
 
 
+# Update the framelength of a function entity.
 def update_func_entity_framelen(name, framelength):
     if name == mainprog_name:
         return
@@ -662,6 +693,7 @@ def update_func_entity_framelen(name, framelength):
     func_entity.set_framelen(framelength)
 
 
+# Add a new parameter entity.
 def add_param_entity(name, par_mode):
     nested_level = scopes[-1].nested_level
     par_offset   = scopes[-1].get_offset()
@@ -671,6 +703,7 @@ def add_param_entity(name, par_mode):
     scopes[-1].addEntity(Parameter(name, par_mode, par_offset))
 
 
+# Add a new variable entity.
 def add_var_entity(name):
     nested_level = scopes[-1].nested_level
     var_offset   = scopes[-1].get_offset()
@@ -683,6 +716,7 @@ def add_var_entity(name):
     scopes[-1].addEntity(Variable(name, var_offset))
 
 
+# Add a new function argument to a given function.
 def add_func_arg(func_name, par_mode):
     if (par_mode == 'in'):
         new_arg = Argument('CV')
@@ -697,6 +731,7 @@ def add_func_arg(func_name, par_mode):
     func_entity.add_arg(new_arg)
 
 
+# Search for an entity named 'name' of type 'etype'.
 def search_entity(name, etype):
     if scopes == list():
         return
@@ -708,26 +743,25 @@ def search_entity(name, etype):
         tmp_scope = tmp_scope.enclosing_scope
 
 
+# Check if entity named 'name' of type 'etype' at nested level
+# 'nested_level' is redefined.
 def unique_entity(name, etype, nested_level):
     if scopes[-1].nested_level < nested_level:
         return
     scope = scopes[nested_level]
-#   print('ABOUT TO ADD: ', name)
     list_len = len(scope.entities)
     for i in range(list_len):
-#       print(scope.entities[i].name)
         for j in range(list_len):
             e1 = scope.entities[i]
             e2 = scope.entities[j]
-#           print(i,j)
-#           print(e1.name, e2.name, '\n')
             if e1.name == e2.name and e1.etype == e2.etype \
                     and e1.name == name and e1.etype == etype:
-#               print('SAME: ' ,e1.name, e2.name)
                 return False
     return True
 
 
+# Check if a variable entity named 'name' already exists
+# as a parameter entity.
 def var_is_param(name, nested_level):
     if scopes[-1].nested_level < nested_level:
         return
@@ -757,12 +791,20 @@ def parser():
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected \'EOF\' but found \'%s\' instead' % token.tkval)
     generate_int_code_file()
-    generate_c_code_file()
+    if have_subprog == False:
+        generate_c_code_file()
+    else:
+        pwarn('Nested functions are defined! Transformation of intermediate\n' \
+            + '          code to ANSI C equivalent cannot take place!')
+        ceq_file.close()
+        os.remove(ceq_file.name)
 
 
-# The following functions implement the syntax rules of CiScal grammar rev.3
-# (as of March 3, 2017) and no further documentation is necessary other than
-# the one found in ciscal-grammar.pdf.
+# The following functions implement the syntax and semantic rules of CiScal grammar
+# rev.3 (as of March 3, 2017), including any additional specifications published at
+# a later time (as of April 26, 2017). For this reason, no further documentation is
+# necessary other than the one found in ciscal-grammar.pdf and the corresponding
+# specifications documents.
 
 
 def program():
@@ -801,7 +843,7 @@ def block(name):
         gen_quad('halt')
     gen_quad('end_block', name)
     update_func_entity_framelen(name, scopes[-1].tmp_offset)
-#   print("LEAVING ", name) # TODO remove
+#   print("LEAVING ", name)
 #   print_scopes()
     scopes.pop()
 
@@ -833,11 +875,12 @@ def varlist():
 
 
 def subprograms():
-    global token, have_return, in_function
+    global token, have_return, in_function, have_subprog
     while token.tktype == TokenType.PROCSYM or token.tktype == TokenType.FUNCSYM:
         in_function.append(False)
         have_return.append(False)
-        if (token.tktype == TokenType.FUNCSYM):
+        have_subprog = True
+        if token.tktype == TokenType.FUNCSYM:
             in_function[-1] = True
         token = lex()
         func()
@@ -1415,7 +1458,7 @@ def optional_sign():
 ##############################################################
 
 
-# Print program usage and exit
+# Print program usage and exit.
 def print_usage(ec=0):
     print('Usage:  %s [OPTIONS] {-i|--input} INFILE' % __file__)
     print('Available options:')
@@ -1428,7 +1471,7 @@ def print_usage(ec=0):
     sys.exit(ec)
 
 
-# Print program version and exit
+# Print program version and exit.
 def print_version():
     print('CiScal Compiler ', __version__)
     print('Copyright (C) 2017 George Z. Zachos, Andrew Konstantinidis')
