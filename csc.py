@@ -242,6 +242,8 @@ next_tmpvar  = 1      # Used to implement the naming convention of
                       # temporary variables.
 quad_code    = list() # The main program equivalent in quadruples.
 scopes       = list() # The list of currently 'active' scopes.
+actual_pars  = list() # holds functions params as discovered
+                      # while traversing intermediate code
 tokens       = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -678,18 +680,19 @@ def add_func_entity(name):
 
 # Update the start quad label of a function entity.
 def update_func_entity_quad(name):
-    if name == mainprog_name:
-        return
     start_quad = next_quad()
-    func_entity = search_entity(name, "FUNCTION")
+    if name == mainprog_name:
+        return start_quad
+    func_entity = search_entity(name, "FUNCTION")[0]
     func_entity.set_start_quad(start_quad)
+    return start_quad
 
 
 # Update the framelength of a function entity.
 def update_func_entity_framelen(name, framelength):
     if name == mainprog_name:
         return
-    func_entity = search_entity(name, "FUNCTION")
+    func_entity = search_entity(name, "FUNCTION")[0]
     func_entity.set_framelen(framelength)
 
 
@@ -722,7 +725,7 @@ def add_func_arg(func_name, par_mode):
         new_arg = Argument('CV')
     else:
         new_arg = Argument('REF')
-    func_entity = search_entity(func_name, "FUNCTION")
+    func_entity = search_entity(func_name, "FUNCTION")[0]
     if func_entity == None:
         perror_line_exit(5, token.tkl, token.tkc,
             'No definition of \'%s\' was not found' % func_name)
@@ -739,7 +742,7 @@ def search_entity(name, etype):
     while tmp_scope != None:
         for entity in tmp_scope.entities:
             if entity.name == name and entity.etype == etype:
-                return entity
+                return entity, tmp_scope.nested_level
         tmp_scope = tmp_scope.enclosing_scope
 
 
@@ -751,7 +754,7 @@ def search_entity_by_name(name):
     while tmp_scope != None:
         for entity in tmp_scope.entities:
             if entity.name == name:
-                return entity
+                return entity, tmp_scope.nested_level
         tmp_scope = tmp_scope.enclosing_scope
 
 
@@ -793,78 +796,162 @@ def var_is_param(name, nested_level):
 ##############################################################
 
 
-def gnvlcode(v, etype):
-    tmp_entity          = search_entity(v, etype)
+def gnvlcode(v):
+    tmp_entity, elevel  = search_entity_by_name(v)
     curr_nested_level   = scopes[-1].nested_level
-    entity_nested_level = tmp_entity.nested_level
     # TODO handle case: tmp_entity == None
-    print('lw      $t0, -4($sp)')
-    n = curr_nested_level - entity_nested_level - 1
+    print('    lw      $t0, -4($sp)')
+    n = curr_nested_level - elevel - 1
     while  n > 0:
-        print('lw      $t0, -4($t0)')
+        print('    lw      $t0, -4($t0)')
         n -= 1
-    print('addi    $t0, $t0, -%d' % tmp_entity.offset)
+    print('    addi    $t0, $t0, -%d' % tmp_entity.offset)
 
 
 def loadvr(v, r):
-    if v.isdigit():
-        print('li      $%s, %d' % (r, v))
+    if str(v).isdigit():
+        print('    li      $t%s, %d' % (r, v))
     else:
-        tmp_entity        = search_entity_by_name(v)
-        curr_nested_level = scopes[-1].nested_level
+        tmp_entity, elevel = search_entity_by_name(v)
+        curr_nested_level  = scopes[-1].nested_level
         # TODO handle case: tmp_entity == None
-        if tmp_entity.etype == 'VARIABLE' and tmp_entity.nested_level == 0:
-            print('lw      $%s, -%d($s0)' % (r, tmp_entity.offset))
+        if tmp_entity.etype == 'VARIABLE' and elevel == 0:
+            print('    lw      $t%s, -%d($s0)' % (r, tmp_entity.offset))
         elif (tmp_entity.etype == 'VARIABLE' and \
-                tmp_entity.nested_level == curr_nested_level) or \
+                elevel == curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-                and tmp_entity.nested_level == curr_nested_level) or \
+                and elevel == curr_nested_level) or \
                 (tmp_entity.etype == 'TMPVAR'):
-            print('lw      $%s, -%d($sp)' % (r, tmp_entity.offset))
+            print('    lw      $t%s, -%d($sp)' % (r, tmp_entity.offset))
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-                and tmp_entity.nested_level == curr_nested_level:
-            print('lw      $t0, -%d($sp)' % tmp_entity.offset)
-            print('lw      $%s, ($t0)' % r)
+                and elevel == curr_nested_level:
+            print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
+            print('    lw      $t%s, ($t0)' % r)
         elif (tmp_entity.etype == 'VARIABLE' and \
-                tmp_entity.nested_level == curr_nested_level) or \
+                elevel < curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-                and tmp_entity.nested_level < curr_nested_level):
-            gnvlcode(tmp_entity.name, tmp_entity.etype)
-            print('lw      $%s, ($t0)' % r)
+                and elevel < curr_nested_level):
+            gnvlcode(tmp_entity.name)
+            print('    lw      $t%s, ($t0)' % r)
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-                and tmp_entity.nested_level < curr_nested_level:
-                gnvlcode(tmp_entity.name, tmp_entity.etype)
-            print('lw      $t0, (%t0)')
-            print('lw      $%s, ($t0)' % r)
+                and elevel < curr_nested_level:
+            gnvlcode(tmp_entity.name)
+            print('    lw      $t0, (%t0)')
+            print('    lw      $t%s, ($t0)' % r)
+        else:
+            perror_exit(6, 'loadvr loads an immediate or data from memory'
+                        'to a register')
 
 
 def storerv(r, v):
-    tmp_entity        = search_entity_by_name(v)
-    curr_nested_level = scopes[-1].nested_level
+    tmp_entity, elevel = search_entity_by_name(v)
+    curr_nested_level  = scopes[-1].nested_level
     # TODO handle case: tmp_entity == None
-    if tmp_entity.etype == 'VARIABLE' and tmp_entity.nested_level == 0:
-        print('sw      $%s, -%d($s0)' % (r, tmp_entity.offset))
+    if tmp_entity.etype == 'VARIABLE' and elevel == 0:
+        print('    sw      $t%s, -%d($s0)' % (r, tmp_entity.offset))
     elif (tmp_entity.etype == 'VARIABLE' and \
-            tmp_entity.nested_level == curr_nested_level) or \
+            elevel == curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-            and tmp_entity.nested_level == curr_nested_level) or \
+            and elevel == curr_nested_level) or \
             (tmp_entity.etype == 'TMPVAR'):
-        print('sw      $%s, -%d($sp)' % (r, tmp_entity.offset))
+        print('    sw      $t%s, -%d($sp)' % (r, tmp_entity.offset))
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-            and tmp_entity.nested_level == curr_nested_level:
-        print('lw      $t0, -%d($sp)' % tmp_entity.offset)
-        print('sw      $%s, ($t0)' % r)
+            and elevel == curr_nested_level:
+        print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
+        print('    sw      $t%s, ($t0)' % r)
     elif (tmp_entity.etype == 'VARIABLE' and \
-            tmp_entity.nested_level == curr_nested_level) or \
+            elevel < curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-            and tmp_entity.nested_level < curr_nested_level):
-        gnvlcode(tmp_entity.name, tmp_entity.etype)
-        print('sw      $%s, ($t0)' % r)
+            and elevel < curr_nested_level):
+        gnvlcode(tmp_entity.name)
+        print('    sw      $t%s, ($t0)' % r)
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-            and tmp_entity.nested_level < curr_nested_level:
-        gnvlcode(tmp_entity.name, tmp_entity.etype)
-        print('lw      $t0, (%t0)')
-        print('sw      $%s, ($t0)' % r)
+            and elevel < curr_nested_level:
+        gnvlcode(tmp_entity.name)
+        print('    lw      $t0, (%t0)')
+        print('    sw      $t%s, ($t0)' % r)
+    else:
+        print(tmp_entity.etype, elevel, tmp_entity.name, curr_nested_level)
+        perror_exit(6, 'storerv stores the contents of a register to memory')
+
+
+def gen_mips_asm(quad, block_name):
+    global actual_pars
+    print('\nL_' + str(quad.label) + ':')
+    csc_relop = ('=', '<>', '<', '<=', '>', '>=')
+    asm_relop = ('beq', 'bne', 'blt', 'ble', 'bgt', 'bge')
+    csc_op    = ('+', '-', '*', '/')
+    asm_op    = ('add', 'sub', 'mul', 'div')
+    if quad.op == 'jump':
+        print('    j       L_%d' % quad.res)
+    elif quad.op in csc_relop:
+        relop = asm_relop[csc_relop.index(quad.op)]
+        loadvr(quad.arg1, '1')
+        loadvr(quad.arg2, '2')
+        print('    %s     $t1, $t2, %d' % (relop, quad.res))
+    elif quad.op == ':=':
+        loadvr(quad.arg1, '1')
+        storerv('1', quad.res)
+    elif quad.op in csc_op:
+        op = asm_op[csc_op.index(quad.op)]
+        loadvr(quad.arg1, '1')
+        loadvr(quad.arg2, '2')
+        print('    %s     $t1, $t1, $t2' % op)
+        storerv('1', quad.res)
+    elif quad.op == 'out':
+        print('    li      $v0, 1')
+        print('    li      $a0, %s' % quad.arg1)
+        print('    syscall   # service code 1: print integer')
+    elif quad.op == 'retv':
+        loadvr(quad.arg1, '1')
+        print('    lw      $t0, -8($sp)')
+        print('    sw      $t1, ($t0)')
+    elif quad.op == 'halt':
+        print('    li      $v0, 10   # service code 10: exit')
+        print('    syscall')
+    elif quad.op == 'par':
+        if block_name == mainprog_name:
+            caller_level = 0
+        else:
+            caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
+        if actual_pars == [] and block_name != mainprog_name: # TODO verify
+            # TODO handle case caller_entity == None
+            print('    addi    $fp, $sp, %d' % caller_entity.framelength)
+        actual_pars.append(quad)
+        param_offset = 12 + 4*actual_pars.index(quad)
+        if quad.arg2 == 'CV':
+            loadvr(quad.arg1, '0')
+            print('    sw      $t0, -%d($fp)' % param_offset)
+        elif quad.arg2 == 'REF':
+            var_entity, var_level = search_entity_by_name(quad.arg1)
+            if caller_level == var_level:
+                if var_entity.etype == 'VARIABLE' or \
+                        var_entity.etype == 'TMPVAR' or \
+                        (var_entity.etype == 'PARAMETER' and \
+                        var_entity.par_mode == 'in'):
+                    print('    addi    $t0, $sp, -%s' % var_entity.offset)
+                    print('    sw      $t0, -%d($fp)' % param_offset)
+                elif var_entity.etype == 'PARAMETER' and \
+                        var_entity.par_mode == 'inout':
+                    print('    lw      $t0, -%d($sp)' % var_entity.offset)
+                    print('    sw      $t0, -%d($fp)' % param_offset)
+            else:
+                if var_entity.etype == 'VARIABLE' or \
+                        var_entity.etype == 'TMPVAR' or \
+                        (var_entity.etype == 'PARAMETER' and \
+                        var_entity.par_mode == 'in'):
+                    gnvlcode(quad.arg1)
+                    print('    sw      $t0, -%d($fp)' % param_offset)
+                elif var_entity.etype == 'PARAMETER' and \
+                        var_entity.par_mode == 'inout':
+                    gnvlcode(quad.arg1)
+                    print('    lw      $t0, ($t0)')
+                    print('    sw      $t0, -%d($fp)' % param_offset)
+        elif quad.arg2 == 'RET':
+            var_entity, var_level = search_entity_by_name(quad.arg1)
+            print('    addi    $t0, $sp, -%d' % var_entity.offset)
+            print('    sw      $t0, -8($fp)')
+
 
 
 ##############################################################
@@ -918,11 +1005,13 @@ def program():
 
 def block(name):
     global token, scopes
+    #print("ENTERING ", name)
+    #print_scopes()
     if token.tktype == TokenType.LBRACE:
         token = lex()
         declarations()
         subprograms()
-        update_func_entity_quad(name)
+        block_start_quad = update_func_entity_quad(name)
         gen_quad('begin_block', name)
         sequence()
         if token.tktype != TokenType.RBRACE:
@@ -936,8 +1025,12 @@ def block(name):
         gen_quad('halt')
     gen_quad('end_block', name)
     update_func_entity_framelen(name, scopes[-1].tmp_offset)
-#   print("LEAVING ", name)
-#   print_scopes()
+    #print("LEAVING ", name)
+    #print_scopes()
+    for quad in quad_code[block_start_quad:]:
+        s = gen_mips_asm(quad, name)
+        if s != None:
+            print(s)
     scopes.pop()
 
 
@@ -1312,12 +1405,13 @@ def print_stat():
 
 
 def call_stat():
-    global token
+    global token, actual_pars
     if token.tktype == TokenType.IDENT:
         procid = token.tkval
         token  = lex()
         actualpars()
         gen_quad('call', procid)
+        del actual_pars[:]
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected procedure name but found \'%s\' instead' % token.tkval)
@@ -1455,7 +1549,7 @@ def term():
 
 
 def factor():
-    global token
+    global token, actual_pars
     if token.tktype == TokenType.NUMBER or token.tktype == TokenType.PLUS or \
             token.tktype == TokenType.MINUS:
         retval = number_const()
@@ -1474,6 +1568,7 @@ def factor():
             funcret = new_temp()
             gen_quad('par', funcret, 'RET')
             gen_quad('call', retval)
+            del actual_pars[:]
             retval = funcret
     else:
         perror_line_exit(3, token.tkl, token.tkc,
