@@ -794,77 +794,77 @@ def var_is_param(name, nested_level):
 
 
 def gnvlcode(v, etype):
-  tmp_entity          = search_entity(v, etype)
-  curr_nested_level   = scopes[-1].nested_level
-  entity_nested_level = tmp_entity.nested_level
-  # TODO handle case: tmp_entity == None
-  print('lw      $t0, -4($sp)')
-  n = curr_nested_level - entity_nested_level - 1
-  while  n > 0:
-    print('lw      $t0, -4($t0)')
-    n -= 1
-  print('addi    $t0, $t0, -%d' % tmp_entity.offset)
+    tmp_entity          = search_entity(v, etype)
+    curr_nested_level   = scopes[-1].nested_level
+    entity_nested_level = tmp_entity.nested_level
+    # TODO handle case: tmp_entity == None
+    print('lw      $t0, -4($sp)')
+    n = curr_nested_level - entity_nested_level - 1
+    while  n > 0:
+        print('lw      $t0, -4($t0)')
+        n -= 1
+    print('addi    $t0, $t0, -%d' % tmp_entity.offset)
 
 
 def loadvr(v, r):
-  if v.isdigit():
-    print('li      $%s, %d' % (r, v))
-  else:
+    if v.isdigit():
+        print('li      $%s, %d' % (r, v))
+    else:
+        tmp_entity        = search_entity_by_name(v)
+        curr_nested_level = scopes[-1].nested_level
+        # TODO handle case: tmp_entity == None
+        if tmp_entity.etype == 'VARIABLE' and tmp_entity.nested_level == 0:
+            print('lw      $%s, -%d($s0)' % (r, tmp_entity.offset))
+        elif (tmp_entity.etype == 'VARIABLE' and \
+                tmp_entity.nested_level == curr_nested_level) or \
+                (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
+                and tmp_entity.nested_level == curr_nested_level) or \
+                (tmp_entity.etype == 'TMPVAR'):
+            print('lw      $%s, -%d($sp)' % (r, tmp_entity.offset))
+        elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
+                and tmp_entity.nested_level == curr_nested_level:
+            print('lw      $t0, -%d($sp)' % tmp_entity.offset)
+            print('lw      $%s, ($t0)' % r)
+        elif (tmp_entity.etype == 'VARIABLE' and \
+                tmp_entity.nested_level == curr_nested_level) or \
+                (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
+                and tmp_entity.nested_level < curr_nested_level):
+            gnvlcode(tmp_entity.name, tmp_entity.etype)
+            print('lw      $%s, ($t0)' % r)
+        elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
+                and tmp_entity.nested_level < curr_nested_level:
+                gnvlcode(tmp_entity.name, tmp_entity.etype)
+            print('lw      $t0, (%t0)')
+            print('lw      $%s, ($t0)' % r)
+
+
+def storerv(r, v):
     tmp_entity        = search_entity_by_name(v)
     curr_nested_level = scopes[-1].nested_level
     # TODO handle case: tmp_entity == None
     if tmp_entity.etype == 'VARIABLE' and tmp_entity.nested_level == 0:
-      print('lw      $%s, -%d($s0)' % (r, tmp_entity.offset))
+        print('sw      $%s, -%d($s0)' % (r, tmp_entity.offset))
     elif (tmp_entity.etype == 'VARIABLE' and \
-        tmp_entity.nested_level == curr_nested_level) or \
-        (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-        and tmp_entity.nested_level == curr_nested_level) or \
-        (tmp_entity.etype == 'TMPVAR'):
-      print('lw      $%s, -%d($sp)' % (r, tmp_entity.offset))
+            tmp_entity.nested_level == curr_nested_level) or \
+            (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
+            and tmp_entity.nested_level == curr_nested_level) or \
+            (tmp_entity.etype == 'TMPVAR'):
+        print('sw      $%s, -%d($sp)' % (r, tmp_entity.offset))
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-        and tmp_entity.nested_level == curr_nested_level:
-      print('lw      $t0, -%d($sp)' % tmp_entity.offset)
-      print('lw      $%s, ($t0)' % r)
+            and tmp_entity.nested_level == curr_nested_level:
+        print('lw      $t0, -%d($sp)' % tmp_entity.offset)
+        print('sw      $%s, ($t0)' % r)
     elif (tmp_entity.etype == 'VARIABLE' and \
-        tmp_entity.nested_level == curr_nested_level) or \
-        (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-        and tmp_entity.nested_level < curr_nested_level):
-      gnvlcode(tmp_entity.name, tmp_entity.etype)
-      print('lw      $%s, ($t0)' % r)
+            tmp_entity.nested_level == curr_nested_level) or \
+            (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
+            and tmp_entity.nested_level < curr_nested_level):
+        gnvlcode(tmp_entity.name, tmp_entity.etype)
+        print('sw      $%s, ($t0)' % r)
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-        and tmp_entity.nested_level < curr_nested_level:
-      gnvlcode(tmp_entity.name, tmp_entity.etype)
-      print('lw      $t0, (%t0)')
-      print('lw      $%s, ($t0)' % r)
-
-
-def storerv(r, v):
-  tmp_entity        = search_entity_by_name(v)
-  curr_nested_level = scopes[-1].nested_level
-  # TODO handle case: tmp_entity == None
-  if tmp_entity.etype == 'VARIABLE' and tmp_entity.nested_level == 0:
-    print('sw      $%s, -%d($s0)' % (r, tmp_entity.offset))
-  elif (tmp_entity.etype == 'VARIABLE' and \
-      tmp_entity.nested_level == curr_nested_level) or \
-      (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-      and tmp_entity.nested_level == curr_nested_level) or \
-      (tmp_entity.etype == 'TMPVAR'):
-    print('sw      $%s, -%d($sp)' % (r, tmp_entity.offset))
-  elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-      and tmp_entity.nested_level == curr_nested_level:
-    print('lw      $t0, -%d($sp)' % tmp_entity.offset)
-    print('sw      $%s, ($t0)' % r)
-  elif (tmp_entity.etype == 'VARIABLE' and \
-      tmp_entity.nested_level == curr_nested_level) or \
-      (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
-      and tmp_entity.nested_level < curr_nested_level):
-    gnvlcode(tmp_entity.name, tmp_entity.etype)
-    print('sw      $%s, ($t0)' % r)
-  elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
-      and tmp_entity.nested_level < curr_nested_level:
-    gnvlcode(tmp_entity.name, tmp_entity.etype)
-    print('lw      $t0, (%t0)')
-    print('sw      $%s, ($t0)' % r)
+            and tmp_entity.nested_level < curr_nested_level:
+        gnvlcode(tmp_entity.name, tmp_entity.etype)
+        print('lw      $t0, (%t0)')
+        print('sw      $%s, ($t0)' % r)
 
 
 ##############################################################
