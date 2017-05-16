@@ -891,7 +891,7 @@ def gen_mips_asm(quad, block_name):
         relop = asm_relop[csc_relop.index(quad.op)]
         loadvr(quad.arg1, '1')
         loadvr(quad.arg2, '2')
-        print('    %s     $t1, $t2, %d' % (relop, quad.res))
+        print('    %s     $t1, $t2, L_%d' % (relop, quad.res))
     elif quad.op == ':=':
         loadvr(quad.arg1, '1')
         storerv('1', quad.res)
@@ -902,8 +902,10 @@ def gen_mips_asm(quad, block_name):
         print('    %s     $t1, $t1, $t2' % op)
         storerv('1', quad.res)
     elif quad.op == 'out':
+        loadvr(quad.arg1, '9')
         print('    li      $v0, 1')
-        print('    li      $a0, %s' % quad.arg1)
+        #print('    li      $a0, %s' % quad.arg1)
+        print('    add     $a0, $zero, $t9')
         print('    syscall   # service code 1: print integer')
     elif quad.op == 'retv':
         loadvr(quad.arg1, '1')
