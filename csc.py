@@ -907,6 +907,9 @@ def gen_mips_asm(quad, block_name):
         #print('    li      $a0, %s' % quad.arg1)
         print('    add     $a0, $zero, $t9')
         print('    syscall   # service code 1: print integer')
+        print('    la      $a0, newline')
+        print('    li      $v0, 4')
+        print('    syscall   # service code 4: print (a null terminated) string')
     elif quad.op == 'retv':
         loadvr(quad.arg1, '1')
         print('    lw      $t0, -8($sp)')
@@ -975,13 +978,17 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'begin_block':
         print('    sw      $ra, 0($sp)')
         if block_name == mainprog_name:
-            # add the following lines at the beginning of the file
-            print('    j       L_%d' % quad.label)
+            # add the following (commented) line at the beginning of the file
+            # print('    j       L_%d' % quad.label)
             print('    addi    $sp, $sp, %d' % main_programs_framelength)
             print('    move    $s0, $sp')
     elif quad.op == 'end_block':
         if block_name == mainprog_name:
-            print('    j       L_%d' % halt_label)
+            print('    j       L_%d\n' % halt_label)
+            # Hack for printing newline character
+            print('#######################')
+            print('    .data\n')
+            print('newline:  .asciiz    "\\n"\n')
         else:
             print('    lw      $ra, 0($sp)')
             print('    jr      $ra')
