@@ -244,6 +244,7 @@ quad_code    = list() # The main program equivalent in quadruples.
 scopes       = list() # The list of currently 'active' scopes.
 actual_pars  = list() # holds functions params as discovered
                       # while traversing intermediate code
+main_programs_framelength = halt_label = -1
 tokens       = {
     '(':          TokenType.LPAREN,
     ')':          TokenType.RPAREN,
@@ -690,7 +691,9 @@ def update_func_entity_quad(name):
 
 # Update the framelength of a function entity.
 def update_func_entity_framelen(name, framelength):
+    global main_programs_framelength
     if name == mainprog_name:
+        main_programs_framelength = framelength
         return
     func_entity = search_entity(name, "FUNCTION")[0]
     func_entity.set_framelen(framelength)
@@ -826,18 +829,18 @@ def loadvr(v, r):
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
                 and elevel == curr_nested_level:
             print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
-            print('    lw      $t%s, ($t0)' % r)
+            print('    lw      $t%s, 0($t0)' % r)
         elif (tmp_entity.etype == 'VARIABLE' and \
                 elevel < curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
                 and elevel < curr_nested_level):
             gnvlcode(tmp_entity.name)
-            print('    lw      $t%s, ($t0)' % r)
+            print('    lw      $t%s, 0($t0)' % r)
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
                 and elevel < curr_nested_level:
             gnvlcode(tmp_entity.name)
-            print('    lw      $t0, (%t0)')
-            print('    lw      $t%s, ($t0)' % r)
+            print('    lw      $t0, 0(%t0)')
+            print('    lw      $t%s, 0($t0)' % r)
         else:
             perror_exit(6, 'loadvr loads an immediate or data from memory'
                         'to a register')
@@ -858,18 +861,18 @@ def storerv(r, v):
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
             and elevel == curr_nested_level:
         print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
-        print('    sw      $t%s, ($t0)' % r)
+        print('    sw      $t%s, 0($t0)' % r)
     elif (tmp_entity.etype == 'VARIABLE' and \
             elevel < curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
             and elevel < curr_nested_level):
         gnvlcode(tmp_entity.name)
-        print('    sw      $t%s, ($t0)' % r)
+        print('    sw      $t%s, 0($t0)' % r)
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
             and elevel < curr_nested_level:
         gnvlcode(tmp_entity.name)
-        print('    lw      $t0, (%t0)')
-        print('    sw      $t%s, ($t0)' % r)
+        print('    lw      $t0, 0(%t0)')
+        print('    sw      $t%s, 0($t0)' % r)
     else:
         print(tmp_entity.etype, elevel, tmp_entity.name, curr_nested_level)
         perror_exit(6, 'storerv stores the contents of a register to memory')
@@ -905,7 +908,7 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'retv':
         loadvr(quad.arg1, '1')
         print('    lw      $t0, -8($sp)')
-        print('    sw      $t1, ($t0)')
+        print('    sw      $t1, 0($t0)')
     elif quad.op == 'halt':
         print('    li      $v0, 10   # service code 10: exit')
         print('    syscall')
@@ -945,13 +948,41 @@ def gen_mips_asm(quad, block_name):
                 elif var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'inout':
                     gnvlcode(quad.arg1)
-                    print('    lw      $t0, ($t0)')
+                    print('    lw      $t0, 0($t0)')
                     print('    sw      $t0, -%d($fp)' % param_offset)
         elif quad.arg2 == 'RET':
             var_entity, var_level = search_entity_by_name(quad.arg1)
             print('    addi    $t0, $sp, -%d' % var_entity.offset)
             print('    sw      $t0, -8($fp)')
-
+    elif quad.op == 'call':
+        if block_name == mainprog_name:
+            caller_level = 0
+            framelength = main_programs_framelength
+        else:
+            caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
+            framelength = caller_entity.framelength
+        callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
+        if caller_level == callee_level:
+            print('    lw      $t0, -4($sp)')
+            print('    sw      $t0, -4($fp)')
+        else:
+            print('    sw      $sp, -4($fp)')
+        print('    addi    $sp, $sp, %d' % framelength)
+        print('    jal     L_%s' % str(callee_entity.start_quad))
+        print('    addi    $sp, $sp, -%d' % framelength)
+    elif quad.op == 'begin_block':
+        print('    sw      $ra, 0($sp)')
+        if block_name == mainprog_name:
+            # add the following lines at the beginning of the file
+            print('    j       L_%d' % quad.label)
+            print('    addi    $sp, $sp, %d' % main_programs_framelength)
+            print('    move    $s0, $sp')
+    elif quad.op == 'end_block':
+        if block_name == mainprog_name:
+            print('    j       L_%d' % halt_label)
+        else:
+            print('    lw      $ra, 0($sp)')
+            print('    jr      $ra')
 
 
 ##############################################################
@@ -1004,7 +1035,7 @@ def program():
 
 
 def block(name):
-    global token, scopes
+    global token, scopes, halt_label
     #print("ENTERING ", name)
     #print_scopes()
     if token.tktype == TokenType.LBRACE:
@@ -1022,6 +1053,7 @@ def block(name):
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected block start (\'{\') but found \'%s\' instead' % token.tkval)
     if name == mainprog_name:
+        halt_label = next_quad()
         gen_quad('halt')
     gen_quad('end_block', name)
     update_func_entity_framelen(name, scopes[-1].tmp_offset)
