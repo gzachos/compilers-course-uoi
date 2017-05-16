@@ -349,7 +349,7 @@ def open_files(input_filename, interm_filename, cequiv_filename, output_filename
         infile   = open(input_filename,  'r', encoding='utf-8')
         int_file = open(interm_filename, 'w', encoding='utf-8')
         ceq_file = open(cequiv_filename, 'w', encoding='utf-8')
-#       outfile  = open(output_filename, 'w', encoding='utf-8')
+        outfile  = open(output_filename, 'w', encoding='utf-8')
     except OSError as oserr:
         if oserr.filename != None:
             perror_exit(oserr.errno, oserr.filename + ':', oserr.strerror)
@@ -363,6 +363,7 @@ def close_files():
     infile.close()
     int_file.close()
     ceq_file.close()
+    outfile.close()
 
 
 ##############################################################
@@ -803,44 +804,44 @@ def gnvlcode(v):
     tmp_entity, elevel  = search_entity_by_name(v)
     curr_nested_level   = scopes[-1].nested_level
     # TODO handle case: tmp_entity == None
-    print('    lw      $t0, -4($sp)')
+    outfile.write('    lw      $t0, -4($sp)\n')
     n = curr_nested_level - elevel - 1
     while  n > 0:
-        print('    lw      $t0, -4($t0)')
+        outfile.write('    lw      $t0, -4($t0)\n')
         n -= 1
-    print('    addi    $t0, $t0, -%d' % tmp_entity.offset)
+    outfile.write('    addi    $t0, $t0, -%d\n' % tmp_entity.offset)
 
 
 def loadvr(v, r):
     if str(v).isdigit():
-        print('    li      $t%s, %d' % (r, v))
+        outfile.write('    li      $t%s, %d\n' % (r, v))
     else:
         tmp_entity, elevel = search_entity_by_name(v)
         curr_nested_level  = scopes[-1].nested_level
         # TODO handle case: tmp_entity == None
         if tmp_entity.etype == 'VARIABLE' and elevel == 0:
-            print('    lw      $t%s, -%d($s0)' % (r, tmp_entity.offset))
+            outfile.write('    lw      $t%s, -%d($s0)\n' % (r, tmp_entity.offset))
         elif (tmp_entity.etype == 'VARIABLE' and \
                 elevel == curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
                 and elevel == curr_nested_level) or \
                 (tmp_entity.etype == 'TMPVAR'):
-            print('    lw      $t%s, -%d($sp)' % (r, tmp_entity.offset))
+            outfile.write('    lw      $t%s, -%d($sp)\n' % (r, tmp_entity.offset))
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
                 and elevel == curr_nested_level:
-            print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
-            print('    lw      $t%s, 0($t0)' % r)
+            outfile.write('    lw      $t0, -%d($sp)\n' % tmp_entity.offset)
+            outfile.write('    lw      $t%s, 0($t0)\n' % r)
         elif (tmp_entity.etype == 'VARIABLE' and \
                 elevel < curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
                 and elevel < curr_nested_level):
             gnvlcode(tmp_entity.name)
-            print('    lw      $t%s, 0($t0)' % r)
+            outfile.write('    lw      $t%s, 0($t0)\n' % r)
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
                 and elevel < curr_nested_level:
             gnvlcode(tmp_entity.name)
-            print('    lw      $t0, 0(%t0)')
-            print('    lw      $t%s, 0($t0)' % r)
+            outfile.write('    lw      $t0, 0(%t0)\n')
+            outfile.write('    lw      $t%s, 0($t0)\n' % r)
         else:
             perror_exit(6, 'loadvr loads an immediate or data from memory'
                         'to a register')
@@ -851,47 +852,48 @@ def storerv(r, v):
     curr_nested_level  = scopes[-1].nested_level
     # TODO handle case: tmp_entity == None
     if tmp_entity.etype == 'VARIABLE' and elevel == 0:
-        print('    sw      $t%s, -%d($s0)' % (r, tmp_entity.offset))
+        outfile.write('    sw      $t%s, -%d($s0)\n' % (r, tmp_entity.offset))
     elif (tmp_entity.etype == 'VARIABLE' and \
             elevel == curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
             and elevel == curr_nested_level) or \
             (tmp_entity.etype == 'TMPVAR'):
-        print('    sw      $t%s, -%d($sp)' % (r, tmp_entity.offset))
+        outfile.write('    sw      $t%s, -%d($sp)\n' % (r, tmp_entity.offset))
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
             and elevel == curr_nested_level:
-        print('    lw      $t0, -%d($sp)' % tmp_entity.offset)
-        print('    sw      $t%s, 0($t0)' % r)
+        outfile.write('    lw      $t0, -%d($sp)\n' % tmp_entity.offset)
+        outfile.write('    sw      $t%s, 0($t0)\n' % r)
     elif (tmp_entity.etype == 'VARIABLE' and \
             elevel < curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
             and elevel < curr_nested_level):
         gnvlcode(tmp_entity.name)
-        print('    sw      $t%s, 0($t0)' % r)
+        outfile.write('    sw      $t%s, 0($t0)\n' % r)
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
             and elevel < curr_nested_level:
         gnvlcode(tmp_entity.name)
-        print('    lw      $t0, 0(%t0)')
-        print('    sw      $t%s, 0($t0)' % r)
+        outfile.write('    lw      $t0, 0(%t0)\n')
+        outfile.write('    sw      $t%s, 0($t0)\n' % r)
     else:
-        print(tmp_entity.etype, elevel, tmp_entity.name, curr_nested_level)
         perror_exit(6, 'storerv stores the contents of a register to memory')
 
 
 def gen_mips_asm(quad, block_name):
     global actual_pars
-    print('\nL_' + str(quad.label) + ':')
+    if str(quad.label) == '0':
+        outfile.write(' ' * 70) # Will be later overwritten
+    outfile.write('\nL_' + str(quad.label) + ':\n')
     csc_relop = ('=', '<>', '<', '<=', '>', '>=')
     asm_relop = ('beq', 'bne', 'blt', 'ble', 'bgt', 'bge')
     csc_op    = ('+', '-', '*', '/')
     asm_op    = ('add', 'sub', 'mul', 'div')
     if quad.op == 'jump':
-        print('    j       L_%d' % quad.res)
+        outfile.write('    j       L_%d\n' % quad.res)
     elif quad.op in csc_relop:
         relop = asm_relop[csc_relop.index(quad.op)]
         loadvr(quad.arg1, '1')
         loadvr(quad.arg2, '2')
-        print('    %s     $t1, $t2, L_%d' % (relop, quad.res))
+        outfile.write('    %s     $t1, $t2, L_%d\n' % (relop, quad.res))
     elif quad.op == ':=':
         loadvr(quad.arg1, '1')
         storerv('1', quad.res)
@@ -899,24 +901,24 @@ def gen_mips_asm(quad, block_name):
         op = asm_op[csc_op.index(quad.op)]
         loadvr(quad.arg1, '1')
         loadvr(quad.arg2, '2')
-        print('    %s     $t1, $t1, $t2' % op)
+        outfile.write('    %s     $t1, $t1, $t2\n' % op)
         storerv('1', quad.res)
     elif quad.op == 'out':
         loadvr(quad.arg1, '9')
-        print('    li      $v0, 1')
+        outfile.write('    li      $v0, 1\n')
         #print('    li      $a0, %s' % quad.arg1)
-        print('    add     $a0, $zero, $t9')
-        print('    syscall   # service code 1: print integer')
-        print('    la      $a0, newline')
-        print('    li      $v0, 4')
-        print('    syscall   # service code 4: print (a null terminated) string')
+        outfile.write('    add     $a0, $zero, $t9\n')
+        outfile.write('    syscall   # service code 1: print integer\n')
+        outfile.write('    la      $a0, newline\n')
+        outfile.write('    li      $v0, 4\n')
+        outfile.write('    syscall   # service code 4: print (a null terminated) string\n')
     elif quad.op == 'retv':
         loadvr(quad.arg1, '1')
-        print('    lw      $t0, -8($sp)')
-        print('    sw      $t1, 0($t0)')
+        outfile.write('    lw      $t0, -8($sp)\n')
+        outfile.write('    sw      $t1, 0($t0)\n')
     elif quad.op == 'halt':
-        print('    li      $v0, 10   # service code 10: exit')
-        print('    syscall')
+        outfile.write('    li      $v0, 10   # service code 10: exit\n')
+        outfile.write('    syscall\n')
     elif quad.op == 'par':
         if block_name == mainprog_name:
             caller_level = 0
@@ -924,12 +926,12 @@ def gen_mips_asm(quad, block_name):
             caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
         if actual_pars == [] and block_name != mainprog_name: # TODO verify
             # TODO handle case caller_entity == None
-            print('    addi    $fp, $sp, %d' % caller_entity.framelength)
+            outfile.write('    addi    $fp, $sp, %d\n' % caller_entity.framelength)
         actual_pars.append(quad)
         param_offset = 12 + 4*actual_pars.index(quad)
         if quad.arg2 == 'CV':
             loadvr(quad.arg1, '0')
-            print('    sw      $t0, -%d($fp)' % param_offset)
+            outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
         elif quad.arg2 == 'REF':
             var_entity, var_level = search_entity_by_name(quad.arg1)
             if caller_level == var_level:
@@ -937,28 +939,28 @@ def gen_mips_asm(quad, block_name):
                         var_entity.etype == 'TMPVAR' or \
                         (var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'in'):
-                    print('    addi    $t0, $sp, -%s' % var_entity.offset)
-                    print('    sw      $t0, -%d($fp)' % param_offset)
+                    outfile.write('    addi    $t0, $sp, -%s\n' % var_entity.offset)
+                    outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
                 elif var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'inout':
-                    print('    lw      $t0, -%d($sp)' % var_entity.offset)
-                    print('    sw      $t0, -%d($fp)' % param_offset)
+                    outfile.write('    lw      $t0, -%d($sp)\n' % var_entity.offset)
+                    outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
             else:
                 if var_entity.etype == 'VARIABLE' or \
                         var_entity.etype == 'TMPVAR' or \
                         (var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'in'):
                     gnvlcode(quad.arg1)
-                    print('    sw      $t0, -%d($fp)' % param_offset)
+                    outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
                 elif var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'inout':
                     gnvlcode(quad.arg1)
-                    print('    lw      $t0, 0($t0)')
-                    print('    sw      $t0, -%d($fp)' % param_offset)
+                    outfile.write('    lw      $t0, 0($t0)\n')
+                    outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
         elif quad.arg2 == 'RET':
             var_entity, var_level = search_entity_by_name(quad.arg1)
-            print('    addi    $t0, $sp, -%d' % var_entity.offset)
-            print('    sw      $t0, -8($fp)')
+            outfile.write('    addi    $t0, $sp, -%d\n' % var_entity.offset)
+            outfile.write('    sw      $t0, -8($fp)\n')
     elif quad.op == 'call':
         if block_name == mainprog_name:
             caller_level = 0
@@ -968,30 +970,34 @@ def gen_mips_asm(quad, block_name):
             framelength = caller_entity.framelength
         callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
         if caller_level == callee_level:
-            print('    lw      $t0, -4($sp)')
-            print('    sw      $t0, -4($fp)')
+            outfile.write('    lw      $t0, -4($sp)\n')
+            outfile.write('    sw      $t0, -4($fp)\n')
         else:
-            print('    sw      $sp, -4($fp)')
-        print('    addi    $sp, $sp, %d' % framelength)
-        print('    jal     L_%s' % str(callee_entity.start_quad))
-        print('    addi    $sp, $sp, -%d' % framelength)
+            outfile.write('    sw      $sp, -4($fp)\n')
+        outfile.write('    addi    $sp, $sp, %d\n' % framelength)
+        outfile.write('    jal     L_%s\n' % str(callee_entity.start_quad))
+        outfile.write('    addi    $sp, $sp, -%d\n' % framelength)
     elif quad.op == 'begin_block':
-        print('    sw      $ra, 0($sp)')
+        outfile.write('    sw      $ra, 0($sp)\n')
         if block_name == mainprog_name:
-            # add the following (commented) line at the beginning of the file
-            # print('    j       L_%d' % quad.label)
-            print('    addi    $sp, $sp, %d' % main_programs_framelength)
-            print('    move    $s0, $sp')
+            outfile.seek(0,0)
+            outfile.write('\n')
+            outfile.write('    .globl L_%d\n' % quad.label)
+            outfile.write('    .text\n\n')
+            outfile.write('    j       L_%d   # main program\n' % quad.label)
+            outfile.seek(0,2)
+            outfile.write('    addi    $sp, $sp, %d\n' % main_programs_framelength)
+            outfile.write('    move    $s0, $sp\n')
     elif quad.op == 'end_block':
         if block_name == mainprog_name:
-            print('    j       L_%d\n' % halt_label)
+            outfile.write('    j       L_%d\n' % halt_label)
             # Hack for printing newline character
-            print('#######################')
-            print('    .data\n')
-            print('newline:  .asciiz    "\\n"\n')
+            outfile.write('\n###########################\n\n')
+            outfile.write('    .data\n\n')
+            outfile.write('newline:  .asciiz    "\\n"\n\n')
         else:
-            print('    lw      $ra, 0($sp)')
-            print('    jr      $ra')
+            outfile.write('    lw      $ra, 0($sp)\n')
+            #outfile.write('    jr      $ra')
 
 
 ##############################################################
