@@ -800,10 +800,15 @@ def var_is_param(name, nested_level):
 ##############################################################
 
 
+# Loads in $t0 the address of a non-local variable
 def gnvlcode(v):
-    tmp_entity, elevel  = search_entity_by_name(v)
+    try:
+        tmp_entity, elevel  = search_entity_by_name(v)
+    except:
+        perror_exit(7, 'Undeclared variable:', v)
+    if tmp_entity.etype == 'FUNCTION':
+        perror_exit(7, 'Undeclared variable:', v)
     curr_nested_level   = scopes[-1].nested_level
-    # TODO handle case: tmp_entity == None
     outfile.write('    lw      $t0, -4($sp)\n')
     n = curr_nested_level - elevel - 1
     while  n > 0:
@@ -812,13 +817,16 @@ def gnvlcode(v):
     outfile.write('    addi    $t0, $t0, -%d\n' % tmp_entity.offset)
 
 
+# Load immediate or data from memory to register $t{r}
 def loadvr(v, r):
     if str(v).isdigit():
         outfile.write('    li      $t%s, %d\n' % (r, v))
     else:
-        tmp_entity, elevel = search_entity_by_name(v)
+        try:
+            tmp_entity, elevel = search_entity_by_name(v)
+        except:
+            perror_exit(7, 'Undeclared variable:', v)
         curr_nested_level  = scopes[-1].nested_level
-        # TODO handle case: tmp_entity == None
         if tmp_entity.etype == 'VARIABLE' and elevel == 0:
             outfile.write('    lw      $t%s, -%d($s0)\n' % (r, tmp_entity.offset))
         elif (tmp_entity.etype == 'VARIABLE' and \
@@ -835,11 +843,11 @@ def loadvr(v, r):
                 elevel < curr_nested_level) or \
                 (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
                 and elevel < curr_nested_level):
-            gnvlcode(tmp_entity.name)
+            gnvlcode(v)
             outfile.write('    lw      $t%s, 0($t0)\n' % r)
         elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
                 and elevel < curr_nested_level:
-            gnvlcode(tmp_entity.name)
+            gnvlcode(v)
             outfile.write('    lw      $t0, 0(%t0)\n')
             outfile.write('    lw      $t%s, 0($t0)\n' % r)
         else:
@@ -847,10 +855,13 @@ def loadvr(v, r):
                         'to a register')
 
 
+# Store the contents of register $t{r} to the memory allocated for variable v
 def storerv(r, v):
-    tmp_entity, elevel = search_entity_by_name(v)
+    try:
+        tmp_entity, elevel = search_entity_by_name(v)
+    except:
+        perror_exit(7, 'Undeclared variable:', v)
     curr_nested_level  = scopes[-1].nested_level
-    # TODO handle case: tmp_entity == None
     if tmp_entity.etype == 'VARIABLE' and elevel == 0:
         outfile.write('    sw      $t%s, -%d($s0)\n' % (r, tmp_entity.offset))
     elif (tmp_entity.etype == 'VARIABLE' and \
@@ -867,11 +878,11 @@ def storerv(r, v):
             elevel < curr_nested_level) or \
             (tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'in' \
             and elevel < curr_nested_level):
-        gnvlcode(tmp_entity.name)
+        gnvlcode(v)
         outfile.write('    sw      $t%s, 0($t0)\n' % r)
     elif tmp_entity.etype == 'PARAMETER' and tmp_entity.par_mode == 'inout' \
             and elevel < curr_nested_level:
-        gnvlcode(tmp_entity.name)
+        gnvlcode(v)
         outfile.write('    lw      $t0, 0(%t0)\n')
         outfile.write('    sw      $t%s, 0($t0)\n' % r)
     else:
@@ -906,7 +917,6 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'out':
         loadvr(quad.arg1, '9')
         outfile.write('    li      $v0, 1\n')
-        #print('    li      $a0, %s' % quad.arg1)
         outfile.write('    add     $a0, $zero, $t9\n')
         outfile.write('    syscall   # service code 1: print integer\n')
         outfile.write('    la      $a0, newline\n')
@@ -922,21 +932,24 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'par':
         if block_name == mainprog_name:
             caller_level = 0
+            framelength = main_programs_framelength # TODO verify data consistency
         else:
             caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
-        if actual_pars == [] and block_name != mainprog_name: # TODO verify
-            # TODO handle case caller_entity == None
-            outfile.write('    addi    $fp, $sp, %d\n' % caller_entity.framelength)
+            framelength = caller_entity.framelength
+        if actual_pars == []: # and block_name != mainprog_name: # TODO verify
+            outfile.write('    addi    $fp, $sp, %d\n' % framelength)
         actual_pars.append(quad)
-        param_offset = 12 + 4*actual_pars.index(quad)
+        param_offset = 12 + 4 * actual_pars.index(quad)
         if quad.arg2 == 'CV':
             loadvr(quad.arg1, '0')
             outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
         elif quad.arg2 == 'REF':
-            var_entity, var_level = search_entity_by_name(quad.arg1)
+            try:
+                var_entity, var_level = search_entity_by_name(quad.arg1)
+            except:
+                perror_exit(7, 'Undeclared variable:', quad.arg1)
             if caller_level == var_level:
                 if var_entity.etype == 'VARIABLE' or \
-                        var_entity.etype == 'TMPVAR' or \
                         (var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'in'):
                     outfile.write('    addi    $t0, $sp, -%s\n' % var_entity.offset)
@@ -947,7 +960,6 @@ def gen_mips_asm(quad, block_name):
                     outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
             else:
                 if var_entity.etype == 'VARIABLE' or \
-                        var_entity.etype == 'TMPVAR' or \
                         (var_entity.etype == 'PARAMETER' and \
                         var_entity.par_mode == 'in'):
                     gnvlcode(quad.arg1)
@@ -958,7 +970,10 @@ def gen_mips_asm(quad, block_name):
                     outfile.write('    lw      $t0, 0($t0)\n')
                     outfile.write('    sw      $t0, -%d($fp)\n' % param_offset)
         elif quad.arg2 == 'RET':
-            var_entity, var_level = search_entity_by_name(quad.arg1)
+            try:
+                var_entity, var_level = search_entity_by_name(quad.arg1)
+            except:
+                perror_exit(7, 'Undeclared variable:', quad.arg1)
             outfile.write('    addi    $t0, $sp, -%d\n' % var_entity.offset)
             outfile.write('    sw      $t0, -8($fp)\n')
     elif quad.op == 'call':
@@ -968,7 +983,10 @@ def gen_mips_asm(quad, block_name):
         else:
             caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
             framelength = caller_entity.framelength
-        callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
+        try:
+            callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
+        except:
+            perror_exit(7, 'Undefined function:', quad.arg1)
         if caller_level == callee_level:
             outfile.write('    lw      $t0, -4($sp)\n')
             outfile.write('    sw      $t0, -4($fp)\n')
@@ -980,12 +998,12 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'begin_block':
         outfile.write('    sw      $ra, 0($sp)\n')
         if block_name == mainprog_name:
-            outfile.seek(0,0)
+            outfile.seek(0,0)   # Go to the beginning of the output file
             outfile.write('\n')
             outfile.write('    .globl L_%d\n' % quad.label)
             outfile.write('    .text\n\n')
             outfile.write('    j       L_%d   # main program\n' % quad.label)
-            outfile.seek(0,2)
+            outfile.seek(0,2)   # Go to the end of the output file
             outfile.write('    addi    $sp, $sp, %d\n' % main_programs_framelength)
             outfile.write('    move    $s0, $sp\n')
     elif quad.op == 'end_block':
@@ -997,7 +1015,7 @@ def gen_mips_asm(quad, block_name):
             outfile.write('newline:  .asciiz    "\\n"\n\n')
         else:
             outfile.write('    lw      $ra, 0($sp)\n')
-            #outfile.write('    jr      $ra')
+            outfile.write('    jr      $ra')
 
 
 ##############################################################
