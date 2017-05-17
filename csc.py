@@ -986,7 +986,7 @@ def gen_mips_asm(quad, block_name):
         try:
             callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
         except:
-            perror_exit(7, 'Undefined function:', quad.arg1)
+            perror_exit(7, 'Undefined function/procedure:', quad.arg1)
         if caller_level == callee_level:
             outfile.write('    lw      $t0, -4($sp)\n')
             outfile.write('    sw      $t0, -4($fp)\n')
@@ -1475,6 +1475,11 @@ def call_stat():
         procid = token.tkval
         token  = lex()
         actualpars()
+        try:
+            proce, procl = search_entity_by_name(procid)
+        except:
+            perror_line_exit(7, token.tkl, token.tkc,
+            'Undefined procedure \'%s\'' % procid)
         gen_quad('call', procid)
         del actual_pars[:]
     else:
@@ -1632,6 +1637,11 @@ def factor():
         if tail != None:
             funcret = new_temp()
             gen_quad('par', funcret, 'RET')
+            try:
+                funce, funcl = search_entity_by_name(retval)
+            except:
+                perror_line_exit(7, token.tkl, token.tkc,
+                'Undefined function \'%s\'' % retval)
             gen_quad('call', retval)
             del actual_pars[:]
             retval = funcret
