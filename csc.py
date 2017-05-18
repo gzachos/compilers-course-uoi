@@ -2,7 +2,7 @@
 
 
 #+-----------------------------------------------------------------------+
-#|       Copyright (C) 2017 George Z. Zachos, Andrew Konstantinidis      |
+#|                  Copyright (C) 2017 George Z. Zachos                  |
 #+-----------------------------------------------------------------------+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ import sys, getopt, os
 from enum import Enum
 from collections import OrderedDict
 
-__version__='1.0.0'
+__version__='2.0.0'
 
 
 ##############################################################
@@ -1760,7 +1760,7 @@ def print_usage(ec=0):
 # Print program version and exit.
 def print_version():
     print('CiScal Compiler ', __version__)
-    print('Copyright (C) 2017 George Z. Zachos, Andrew Konstantinidis')
+    print('Copyright (C) 2017 George Z. Zachos')
     print('This is free software; see the source for copying conditions.')
     print('There is NO warranty to the extent permitted by law.\n')
     sys.exit()
