@@ -926,6 +926,9 @@ def gen_mips_asm(quad, block_name):
         loadvr(quad.arg1, '1')
         outfile.write('    lw      $t0, -8($sp)\n')
         outfile.write('    sw      $t1, 0($t0)\n')
+        # Actually return to caller; just like end_block case.
+        outfile.write('    lw      $ra, 0($sp)\n')
+        outfile.write('    jr      $ra\n')
     elif quad.op == 'halt':
         outfile.write('    li      $v0, 10   # service code 10: exit\n')
         outfile.write('    syscall\n')
