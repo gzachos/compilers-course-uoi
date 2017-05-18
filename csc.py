@@ -656,7 +656,7 @@ def print_scopes():
     print('* main scope\n|')
     for scope in scopes:
         level = scope.nested_level + 1
-    #   print('    ' * level + str(scope))
+        print('    ' * level + str(scope))
         for entity in scope.entities:
             print('|    ' * level + str(entity))
             if isinstance(entity, Function):
@@ -932,11 +932,11 @@ def gen_mips_asm(quad, block_name):
     elif quad.op == 'par':
         if block_name == mainprog_name:
             caller_level = 0
-            framelength = main_programs_framelength # TODO verify data consistency
+            framelength = main_programs_framelength
         else:
             caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
             framelength = caller_entity.framelength
-        if actual_pars == []: # and block_name != mainprog_name: # TODO verify
+        if actual_pars == []:
             outfile.write('    addi    $fp, $sp, %d\n' % framelength)
         actual_pars.append(quad)
         param_offset = 12 + 4 * actual_pars.index(quad)
@@ -987,6 +987,7 @@ def gen_mips_asm(quad, block_name):
             callee_entity, callee_level = search_entity(quad.arg1, 'FUNCTION')
         except:
             perror_exit(7, 'Undefined function/procedure:', quad.arg1)
+        check_subprog_args(callee_entity.name)
         if caller_level == callee_level:
             outfile.write('    lw      $t0, -4($sp)\n')
             outfile.write('    sw      $t0, -4($fp)\n')
@@ -1016,6 +1017,27 @@ def gen_mips_asm(quad, block_name):
         else:
             outfile.write('    lw      $ra, 0($sp)\n')
             outfile.write('    jr      $ra')
+
+
+def check_subprog_args(name):
+    global actual_pars
+    entity, level = search_entity_by_name(name)
+    if entity.ret_type == 'int':
+        actual_pars.pop() # pop parameter of type 'RET'
+    if len(entity.args) != len(actual_pars):
+        perror_exit(7, '%s: Missmatching subprogram argument number' %
+            name)
+    #print('\ncheck')
+    for arg in entity.args:
+        quad = actual_pars.pop(0)
+        #print(arg.par_mode, quad.arg2, arg, quad)
+        if not (arg.par_mode == quad.arg2):
+            if arg.par_mode == 'CV':
+                ptype = 'int'
+            else:
+                ptype = 'int *'
+            perror_exit(7,'%s: Expected parameter \'%s\' to be of'
+                ' type "%s"' % (name, quad.arg1, ptype))
 
 
 ##############################################################
@@ -1470,7 +1492,7 @@ def print_stat():
 
 
 def call_stat():
-    global token, actual_pars
+    global token
     if token.tktype == TokenType.IDENT:
         procid = token.tkval
         token  = lex()
@@ -1481,7 +1503,6 @@ def call_stat():
             perror_line_exit(7, token.tkl, token.tkc,
             'Undefined procedure \'%s\'' % procid)
         gen_quad('call', procid)
-        del actual_pars[:]
     else:
         perror_line_exit(3, token.tkl, token.tkc,
             'Expected procedure name but found \'%s\' instead' % token.tkval)
@@ -1619,7 +1640,7 @@ def term():
 
 
 def factor():
-    global token, actual_pars
+    global token
     if token.tktype == TokenType.NUMBER or token.tktype == TokenType.PLUS or \
             token.tktype == TokenType.MINUS:
         retval = number_const()
@@ -1643,7 +1664,6 @@ def factor():
                 perror_line_exit(7, token.tkl, token.tkc,
                 'Undefined function \'%s\'' % retval)
             gen_quad('call', retval)
-            del actual_pars[:]
             retval = funcret
     else:
         perror_line_exit(3, token.tkl, token.tkc,
