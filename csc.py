@@ -893,7 +893,7 @@ def gen_mips_asm(quad, block_name):
     global actual_pars
     if str(quad.label) == '0':
         outfile.write(' ' * 70) # Will be later overwritten
-    outfile.write('\nL_' + str(quad.label) + ':\n')
+    outfile.write('\nL_' + str(quad.label) + ':   #' + quad.tofile() + '\n')
     csc_relop = ('=', '<>', '<', '<=', '>', '>=')
     asm_relop = ('beq', 'bne', 'blt', 'ble', 'bgt', 'bge')
     csc_op    = ('+', '-', '*', '/')
@@ -937,7 +937,7 @@ def gen_mips_asm(quad, block_name):
             caller_entity, caller_level = search_entity(block_name, 'FUNCTION')
             framelength = caller_entity.framelength
         if actual_pars == []:
-            outfile.write('    addi    $fp, $sp, %d\n' % framelength)
+            outfile.write('    addi    $fp, $sp, -%d\n' % framelength)
         actual_pars.append(quad)
         param_offset = 12 + 4 * actual_pars.index(quad)
         if quad.arg2 == 'CV':
@@ -993,9 +993,9 @@ def gen_mips_asm(quad, block_name):
             outfile.write('    sw      $t0, -4($fp)\n')
         else:
             outfile.write('    sw      $sp, -4($fp)\n')
-        outfile.write('    addi    $sp, $sp, %d\n' % framelength)
-        outfile.write('    jal     L_%s\n' % str(callee_entity.start_quad))
         outfile.write('    addi    $sp, $sp, -%d\n' % framelength)
+        outfile.write('    jal     L_%s\n' % str(callee_entity.start_quad))
+        outfile.write('    addi    $sp, $sp, %d\n' % framelength)
     elif quad.op == 'begin_block':
         outfile.write('    sw      $ra, 0($sp)\n')
         if block_name == mainprog_name:
@@ -1005,7 +1005,7 @@ def gen_mips_asm(quad, block_name):
             outfile.write('    .text\n\n')
             outfile.write('    j       L_%d   # main program\n' % quad.label)
             outfile.seek(0,2)   # Go to the end of the output file
-            outfile.write('    addi    $sp, $sp, %d\n' % main_programs_framelength)
+            #outfile.write('    addi    $sp, $sp, %d\n' % main_programs_framelength)
             outfile.write('    move    $s0, $sp\n')
     elif quad.op == 'end_block':
         if block_name == mainprog_name:
@@ -1016,7 +1016,7 @@ def gen_mips_asm(quad, block_name):
             outfile.write('newline:  .asciiz    "\\n"\n\n')
         else:
             outfile.write('    lw      $ra, 0($sp)\n')
-            outfile.write('    jr      $ra')
+            outfile.write('    jr      $ra\n')
 
 
 def check_subprog_args(name):
