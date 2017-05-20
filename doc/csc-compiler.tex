@@ -134,7 +134,7 @@
 %----------------------------------------------------------------------------------------
 
 \newcommand{\hmwkTitle}{CiScal Compiler} % Assignment title
-\newcommand{\hmwkDueDate}{Monday,\ March\ 13,\ 2017} % Due date
+\newcommand{\hmwkDueDate}{Monday,\ May\ 24,\ 2017} % Due date
 \newcommand{\hmwkClass}{MYY802} % Course/class
 \newcommand{\hmwkClassTime}{} % Class/lecture time
 \newcommand{\hmwkClassInstructor}{George Manis} % Teacher/lecturer
@@ -153,7 +153,7 @@
 }
 
 \author{\textbf{\hmwkAuthorName}}
-\date{March 7, 2017} % Insert date here if you want it to appear below your name
+\date{March 20, 2017} % Insert date here if you want it to appear below your name
 
 %----------------------------------------------------------------------------------------
 
@@ -205,7 +205,9 @@ On the other hand, the features below are not supported:
 \subsection{CiScal Compiler}
 CiScal Compiler (CSC) was developed during the MYY802 - Compilers course at the Department of
 Computer Science and Engineering, University of Ioannina. It is written in Python 3 and serves
-to transform CiScal source code to MIPS Assembly code.
+to transform CiScal source code to Assembly code targeting the MIPS32\footnote{From this point on,
+we will refer to MIPS32 as MIPS} architecture. Moreover, transformation of the intermediate code
+to ANSI C code is available when possible.
 
 \subsubsection{Using the compiler}
 To learn how to use CSC run \verb|./csc.py| and the information below will be printed to console:
@@ -221,7 +223,9 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
           -o, --output OUTFILE      Place output in file: OUTFILE
 \end{verbatim}
 
-\pagebreak
+\textbf{Note}: For the course purposes, the \code{--save-temps} option is enabled by default.
+
+\newpage
 
 
 %----------------------------------------------------------------------------------------
@@ -237,18 +241,18 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
   \item Syntax Analysis
  \end{itemize}
 
- \item 2nd Phase (30\%)
+ \item 2nd Phase (30\%) [Due on April 28, 2017] [Delivered]
  \begin{itemize}
   \item Intermediate Code Generation
  \end{itemize}
  
- \item 3rd Phase (10\%)
+ \item 3rd Phase (10\%) [Due on April 28, 2017] [Delivered]
  \begin{itemize}
   \item Semantic Analysis
   \item Symbol Table
  \end{itemize}
 
- \item 4th Phase (50\%)
+ \item 4th Phase (50\%) [Due on May 24, 2017]
  \begin{itemize}
   \item Final Code Generation (30\%)
   \item Project Report (20\%)
@@ -351,7 +355,7 @@ there are fourteen (14) more accepting states that correspond to characters: '\c
 \subsection{Implementation details}
 
 \subsubsection{Custom Classes}
-During the Implementation of the lexical analyzer, a couple of classes were defined.
+During the implementation of the lexical analyzer, a couple of classes were defined.
 The first class defined was the \code{TokenType} class which is an enumeration that maps token
 types to enumerated constants. The other class was the \code{Token} class and was defined to group
 all useful information related to a token and that should be available to the syntax analyzer. 
@@ -413,6 +417,61 @@ changed to \code{<FACTOR> ::= <OPTIONAL\_SIGN> CONSTANT | (<EXPRESSION>) | ID <I
 
 \textbf{Important}: This change has no impact in the manipulation of numeric constants in the \code{<SELECT-STAT>}
 rule and consequently an optional sign preceding a case constant is illegal.
+
+%----------------------------------------------------------------------------------------
+%	Intermediate Code Generation
+%----------------------------------------------------------------------------------------
+
+\section{Intermediate Code Generation}
+Intermediate code, also known as intermediate representation is a code used internally by the compiler
+in order to represent source code. This code is then used to generate assembly instructions that will finally
+be converted to executable machine code. This intermediate representation is machine independent
+and is designed to be conducive for further processing, such as optimization\footnote{CiSal Compiler
+does not perform any optimazations.} and translation. The intermediate representation used in the CiScal
+Compiler is known as \textbf{three-address code}. The name derives because its instructions consist of
+at most three\footnote{Instructions with fewer operands may occur.} operands. The combination of three
+operands and one operator constitute a \textbf{quadruple} to which we will refer to as a quad. Each quad
+can be referenced using a label (non-negative integer).
+
+The following functions were defined while implementing the intermediate code generation:
+\begin{itemize}
+ \item \code{next\_quad()}: Returns the label of the next quad to be generated.
+ \item \code{gen\_quad(op, arg1, arg2, res)}: Generates a new quad and appends it to the current quad list
+                                              representing input source code.
+ \item \code{new\_temp()}: Creates a new temporary variable named \code{T\_n}, with $n>=0$ and returns its name.
+ \item \code{empty\_list()}: Creates a new (empty) list that will be used to hold quad labels
+                             and returns a reference to it.
+ \item \code{make\_list(label)}: Has the same effect of \code{empty\_list()} but also adds \code{label} to the
+                                 newely created list.
+ \item \code{merge(list1, list2)}: Merges two lists holding quad labels.
+ \item \code{backpatch(list, res)}: Replaces the \code{res} attribute\footnote{3rd operand.} of all the quadruples referenced by
+                                    the labels in \code{list}.
+ \item \code{generate\_int\_code\_file()}: Generates the file containing the intermediate code of the user program.
+\end{itemize}
+
+
+For the transformation of the three-address code to ANSI C equivalent code, the following functions
+were further defined:
+\begin{itemize}
+ \item \code{transform\_to\_c(quad)}: Transforms a quad to ANSI C code.
+ \item \code{find\_var\_decl(quad)}: A naive way to find which variables are used as operands, starting from
+                                     quad \code{quad} and until the end of the block. It returns a list with all
+                                     the variable identifiers encountered. This will help during variable declaration.
+ \item \code{transform\_decls(vars)}: Given a list of variable identifiers, returns a string with a valid C
+                                      variable declaration.
+ \item \code{generate\_c\_code\_file()}: Generates the file containing the ANSI C equivalent code of the
+                                         intermediate code.
+\end{itemize}
+
+\textbf{Notes}:
+\begin{itemize}
+ \item The generated C code is ready to compile using a C compiler.
+ \item The transformation to ANSI C code takes place only when nested function definitions do not exist
+       in user program, as it is not supported by the language specifications. On a later version of CSC,
+       we plan to support nested functions using a GNU C extension provided by the GNU C
+       Compiler\footnote{https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html\#Nested-Functions}.
+\end{itemize}
+
 
 % Listing \ref{homework_example} shows a Python script.
 % \pythonscript{homework_example}{Sample Python Script With Highlighting}
