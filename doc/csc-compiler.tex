@@ -352,7 +352,7 @@ there are fourteen (14) more accepting states that correspond to characters: '\c
 
 \pagebreak
 
-\subsection{Implementation details}
+\subsection{Implementation Details}
 
 \subsubsection{Custom Classes}
 During the implementation of the lexical analyzer, a couple of classes were defined.
@@ -374,7 +374,7 @@ The \code{token} dictionary maps actual keyword values to the corresponding \cod
 attributes and serves code simplicity.
 \pythonscript{token-dict}{Token type/value dictionary}
 
-\subsubsection{Return value}
+\subsubsection{Return Value}
 The \code{lex()} function returns an object of type \code{Token} to the syntax analyzer.
 
 %----------------------------------------------------------------------------------------
@@ -384,14 +384,14 @@ The \code{lex()} function returns an object of type \code{Token} to the syntax a
 \section{Syntax Analyzer}
 
 In order for the syntax analysis to take place, a function for each grammar rule was defined. 
-In the \code{syntax\_analyzer()} function, the global variable \code{token} is assigned the
+In the \code{parser()} function, the global variable \code{token} is assigned the
 \code{Token} class instance returned by the first call to \code{lex()}. Then the \code{program()}
 function that implements the \code{<PROGRAM>} grammar rule is called and upon success, a last
 check takes place to ensure that \code{EOF} follows program end. All functions implementing
 grammar rules expect \code{token} to be ready for ``consumption'' and as a consequence 
 replace it if needed.
 
-\section{Implementation specifics}
+\section{Implementation Specifics}
 \subsection{Handling of numeric constants}
 CiScal source code files can contain (integer) numeric constants between -32768 and 32767 and
 an optional sign (\code{+} or \code{-}) may precede the constant. In case an illegal constant
@@ -431,8 +431,42 @@ does not perform any optimazations.} and translation. The intermediate represent
 Compiler is known as \textbf{three-address code}. The name derives because its instructions consist of
 at most three\footnote{Instructions with fewer operands may occur.} operands. The combination of three
 operands and one operator constitute a \textbf{quadruple} to which we will refer to as a quad. Each quad
-can be referenced using a label (non-negative integer).
+can be referenced using a label (non-negative integer). In addition to the three-address code generation,
+CSC supports generation of intermediate code equivalent in ANSI C and the generated code is ready to compile
+using the underlying system's C compiler. The transformation to ANSI C code takes place only when nested
+function definitions do not exist in user program, as it is not supported by the language specifications.
+On a later version of CSC, we plan to support nested functions using a GNU C extension provided by the GNU
+C Compiler\footnote{https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html\#Nested-Functions}.
 
+
+\subsection{Implementation Details}
+
+\subsubsection{Custom Classes}
+While implementing intermediate code generation, the \code{Quad} class was defined which
+serves to hold the information of a quadruple. This information is the following:
+\begin{itemize}
+ \item \code{label}: the label to reference the quad.
+ \item \code{op}: the operator to be applied to the source operands.
+ \item \code{arg1}: operand \#1, 1st source.
+ \item \code{arg2}: operand \#2, 2nd source.
+ \item \code{res}: operand \#3, destination.
+\end{itemize}
+
+\subsubsection{Global Data}
+The following global variables and data structures where used:
+\begin{itemize}
+ \item \code{nextlabel}: Holds the label (non-negative integer) which will be used to reference
+                         the next \code{Quad} to be generated.
+ \item \code{next\_tmpvar}: Used to implement the naming convention of temporary variables.
+                            (Temporary variable format: T\_$<$next\_tmpvar$>$).
+ \item \code{tmpvars}: A dictionary holding temporary variable names.
+ \item \code{quad\_code}: A list that holds the \code{Quad} objects generated while parsing
+                          the source code of the user program.
+\end{itemize}
+
+\newpage
+
+\subsubsection{Function Definitions}
 The following functions were defined while implementing the intermediate code generation:
 \begin{itemize}
  \item \code{next\_quad()}: Returns the label of the next quad to be generated.
@@ -444,8 +478,8 @@ The following functions were defined while implementing the intermediate code ge
  \item \code{make\_list(label)}: Has the same effect of \code{empty\_list()} but also adds \code{label} to the
                                  newely created list.
  \item \code{merge(list1, list2)}: Merges two lists holding quad labels.
- \item \code{backpatch(list, res)}: Replaces the \code{res} attribute\footnote{3rd operand.} of all the quadruples referenced by
-                                    the labels in \code{list}.
+ \item \code{backpatch(list, res)}: Replaces the \code{res} attribute\footnote{Destination/3rd operand.} 
+                                    of all the quadruples referenced by the labels in \code{list}.
  \item \code{generate\_int\_code\_file()}: Generates the file containing the intermediate code of the user program.
 \end{itemize}
 
@@ -461,15 +495,6 @@ were further defined:
                                       variable declaration.
  \item \code{generate\_c\_code\_file()}: Generates the file containing the ANSI C equivalent code of the
                                          intermediate code.
-\end{itemize}
-
-\textbf{Notes}:
-\begin{itemize}
- \item The generated C code is ready to compile using a C compiler.
- \item The transformation to ANSI C code takes place only when nested function definitions do not exist
-       in user program, as it is not supported by the language specifications. On a later version of CSC,
-       we plan to support nested functions using a GNU C extension provided by the GNU C
-       Compiler\footnote{https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html\#Nested-Functions}.
 \end{itemize}
 
 
