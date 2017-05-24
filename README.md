@@ -14,15 +14,15 @@ Instructor
 
 Language
 --------
-> * Python
+> Python
 
-Python
-------
-__Version: Python 3.5.2__<br>
+Python Version
+--------------
+> 3.5.2
 
 Developer
 ---------
- * [George Z. Zachos](http://cse.uoi.gr/~gzachos)
+[George Z. Zachos](http://cse.uoi.gr/~gzachos)
 
 Semester
 --------
