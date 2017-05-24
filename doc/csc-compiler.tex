@@ -159,7 +159,7 @@
 }
 
 \author{\textbf{\hmwkAuthorName}}
-\date{March 20, 2017} % Insert date here if you want it to appear below your name
+\date{March 24, 2017} % Insert date here if you want it to appear below your name
 
 %----------------------------------------------------------------------------------------
 
@@ -258,7 +258,7 @@ To learn how to use CSC run \verb|./csc.py| and the information below will be pr
   \item Symbol Table
  \end{itemize}
 
- \item 4th Phase (50\%) [Due on May 24, 2017]
+ \item 4th Phase (50\%) [Due on May 24, 2017] [Delivered]
  \begin{itemize}
   \item Final Code Generation (30\%)
   \item Project Report (20\%)
@@ -417,12 +417,18 @@ check is a bit tricky for the following reasons:
        analyzer expects a numeric constant but the subtraction operator will be encountered.
 \end{itemize}
 
-
 For theses reasons, syntax rule \code{<FACTOR> ::= CONSTANT | (<EXPRESSION>) | ID <IDTAIL>} was
 changed to \code{<FACTOR> ::= <OPTIONAL\_SIGN> CONSTANT | (<EXPRESSION>) | ID <IDTAIL>}.
 
 \textbf{Important}: This change has no impact in the manipulation of numeric constants in the \code{<SELECT-STAT>}
 rule and consequently an optional sign preceding a case constant is illegal.
+
+\subsection{Exit Statement}
+The \code{exit} statement is supported in nested do-while loops. When it is encountered, the currently
+executing loop is immediately terminated and the program control resumes at the next statement following
+the loop.
+
+\newpage
 
 %----------------------------------------------------------------------------------------
 %	Intermediate Code Generation
