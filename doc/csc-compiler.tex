@@ -34,6 +34,11 @@
 \usepackage{courier} % Required for the courier font
 \usepackage{tikz}
 \usepackage{capt-of}
+\usepackage{hyperref}
+\hypersetup{%
+  colorlinks = true,
+  linkcolor  = black
+}
 \usetikzlibrary{automata,positioning}
 % Margins
 \topmargin=-0.45in
@@ -77,6 +82,7 @@
         numberstyle=\tiny\color{Blue}, % Line numbers are blue and small
         stepnumber=1 % Line numbers go in steps of 1
 }
+
 
 % Creates a new command to include a perl script, the first parameter is the filename of the script (without .pl), the second parameter is the caption
 \newcommand{\pythonscript}[2]{
@@ -436,7 +442,7 @@ CSC supports generation of intermediate code equivalent in ANSI C and the genera
 using the underlying system's C compiler. The transformation to ANSI C code takes place only when nested
 function definitions do not exist in user program, as it is not supported by the language specifications.
 On a later version of CSC, we plan to support nested functions using a GNU C extension provided by the GNU
-C Compiler\footnote{https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html\#Nested-Functions}.
+C Compiler\footnote{\url{https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html\#Nested-Functions}}.
 
 
 \subsection{Implementation Details}
@@ -498,6 +504,7 @@ were further defined:
 \end{itemize}
 
 \newpage
+
 %----------------------------------------------------------------------------------------
 % Symbol Table
 %----------------------------------------------------------------------------------------
@@ -538,7 +545,7 @@ Implementing the symbol table, included definition of the following classes cont
     \end{itemize}
   \item \code{Function} [Extends \code{Entity} Class]
     \begin{itemize}
-    \item \code{ret\_type}: "int" for CiScal functions or "void" for proceedures.
+    \item \code{ret\_type}: "int" for CiScal functions or "void" for procedures.
     \item \code{start\_quad}: Quad label of the first quad of the function.
     \item \code{args}: A list containing all function arguments (\code{Argument} objects).
     \item \code{framelength}: The function's framelength.
@@ -578,6 +585,119 @@ The following functions were defined while implementing the symbol table:
  \item \code{var\_is\_param(name, nested\_level)}: Check if a variable entity named \code{name} already 
                                                    exists as a parameter entity at nested level \code{nested\_level}.
 \end{itemize}
+
+\newpage
+
+%----------------------------------------------------------------------------------------
+% Final Code
+%----------------------------------------------------------------------------------------
+
+\section{Final Code}
+The final code produced by the CiScal Compiler targets the MIPS\footnote{\url{https://en.wikibooks.org/wiki/MIPS_Assembly/MIPS_Architecture}} architecture and
+is ready to assemble using MARS 4.5 (MIPS Assembler and Runtime 
+Simulator)\footnote{\url{http://courses.missouristate.edu/KenVollmar/mars/}}.
+
+\subsection{Implementation Details}
+
+\subsubsection{Global Data}
+The following global variables and data structures were used:
+\begin{itemize}
+ \item \code{actual\_pars}: A list holding \code{Quad} objects corresponding to subprogram parameters
+                            as discovered while traversing intermediate code. It is then used to validate
+                            parameter passing.
+\end{itemize}
+
+\subsubsection{Function Definitions}
+The following functions were defined while implementing the symbol table:
+\begin{itemize}
+ \item \code{gnvlcode(v)}: Load in register \code{\$t0} the address of the non-local variable \code{v}.
+ \item \code{loadvr(v, r)}: Load immediate or data \code{v} from memory to register \code{\$t\{r\}} (e.g. \code{\$t2}).
+ \item \code{storerv(r, v)}: Store the contents of register \code{\$t\{r\}} to the memory allocated
+                             for variable \code{v}.
+ \item \code{gen\_mips\_asm(quad, block\_name)}: Generate the assembly code for quad \code{quad}.
+                                              \code{block\_name} is the name of the block that is
+                                              currently translated into final code.
+ \item \code{check\_subprog\_args(name)}: Check if actual parameters of subprogram \code{name}
+                                          are of the same type as typical parameters.
+                                          
+\end{itemize}
+
+\subsection{Implementation Specifics}
+During the stage of the final code generation, a number of changes have taken
+place\footnote{Without regard to a possible conflict with the handout.}.
+
+These are the following:
+\begin{itemize}
+ \item A number of assembler directives were added across the output file as shown below:
+  \begin{lstlisting}
+  .globl L_x   # Declare that symbol L_x is global and can be
+               # referenced from other files. L_x is a text tag
+               # (label) pointing at the start of the main program.
+  .text        # The next items are put in the user text segment.
+  # ...
+  # Assembly code produced while translating intermediate code...
+  # ...
+  .data        # The following data items should be stored in
+               # the data segment.
+  newline: .ascizz "\n"   # Store the string "\n" in memory and
+                          # null-terminate it. Use label 'newline'
+                          # to reference it.
+  \end{lstlisting}
+  \newpage
+ \item Instruction \code{add} (R format\footnote{\url{https://en.wikibooks.org/wiki/MIPS_Assembly/Instruction_Formats\#R_Format}})
+       was replaced by \code{addi} (I format\footnote{\url{https://en.wikibooks.org/wiki/MIPS_Assembly/Instruction_Formats\#I_Format}})
+       in all cases that immediates were used.
+ \item Memory access related instructions (\code{lw}, \code{sw})\footnote{\code{lw} and \code{sw} are of I format}
+       were modified to be of the following format:\\ \verb|OP $rt, offset($rs)|, even when offset equals zero
+       and can be omitted (e.g. \verb|OP $rt, 0($rs)|).
+ \item The final code produced by an \code{out} quad (\verb|out, x, _, _|) is the following:
+   \begin{lstlisting}
+   li $v0, 1   # service code 1: print the integer stored in $a0
+   li $a0, x   # load desired value into argument register $a0
+   syscall     # perform the service specified in $v0
+  \end{lstlisting}
+       Nevertheless, \code{x} can be either a variable identifier or a numeric constant (immediate).
+       In case of it being a variable name, instruction \code{li \$a0, x} will fail to assemble.
+       To fix this problem the produced code was modified to match:
+  \begin{lstlisting}
+   # code generated by loadvr(x, '9')
+   li $v0, 1
+   add $a0, $t9, $zero  # move register content from $t9 to $a0
+   syscall
+  \end{lstlisting}
+ \item For a more aesthetic result regarding the output of the print statement, three more instructions
+       were added to the produced code of an \code{out} quad in order for a newline character to be printed
+       after every integer print. The lines added are:
+  \begin{lstlisting}
+  la $a0, newline  # load the addr. of the string pointed by label 'newline'
+  li $v0, 4        # service code 4: print the null terminated string at Mem[$a0]
+  syscall
+  \end{lstlisting}
+ \item In MIPS architecture, stack grows from larger to smaller memory
+       addresses\footnote{\url{https://www.cs.umd.edu/class/sum2003/cmsc311/Notes/Mips/stack.html}}.
+       Because MIPS does not provide an explicit push and pop instruction for manipulating the stack,
+       modifying the stack pointer (\verb|$sp| or \verb|$29|) directly is required. Pushing to stack
+       and poping from stack requires decreasing and increasing the value of \verb|$sp| respectively.
+       For this reason, instructions manipulating the value of stack and frame pointer were changed
+       to follow this specification.
+ \item The final code produced by a \code{retv} quad was modified to actually return
+       program control to the caller and not only to access its frame and update the return value.
+       This was done by adding:
+  \begin{lstlisting}
+   lw $ra, 0($sp)   # Restore the value of $ra. In case of leaf procedures
+                    # it is not actually required.
+   jr $ra           # jump to the return address
+  \end{lstlisting}
+ \item Finally, the \code{halt} quad results in the following assembly code:
+ \begin{lstlisting}
+   li $v0, 10   # service code 10: exit (terminate execution)
+   syscall
+  \end{lstlisting}
+\end{itemize}
+
+
+
+% \subsection{Tests}
 
 
 % Listing \ref{homework_example} shows a Python script.

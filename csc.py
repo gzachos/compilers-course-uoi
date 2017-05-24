@@ -112,7 +112,8 @@ class Token():
 
 
 # The rest of the classes consist the data model required for
-# the implementation of the symbol table.
+# the implementation of the intermediate code generation and
+# the symbol table.
 
 
 class Quad():
@@ -242,7 +243,7 @@ next_tmpvar  = 1      # Used to implement the naming convention of
                       # temporary variables.
 quad_code    = list() # The main program equivalent in quadruples.
 scopes       = list() # The list of currently 'active' scopes.
-actual_pars  = list() # holds functions params as discovered
+actual_pars  = list() # holds subprogram params as discovered
                       # while traversing intermediate code
 main_programs_framelength = halt_label = -1
 tokens       = {
@@ -800,7 +801,7 @@ def var_is_param(name, nested_level):
 ##############################################################
 
 
-# Loads in $t0 the address of a non-local variable
+# Load in register $t0 the address of the non-local variable 'v'.
 def gnvlcode(v):
     try:
         tmp_entity, elevel  = search_entity_by_name(v)
@@ -817,7 +818,7 @@ def gnvlcode(v):
     outfile.write('    addi    $t0, $t0, -%d\n' % tmp_entity.offset)
 
 
-# Load immediate or data from memory to register $t{r}
+# Load immediate or data 'v' from memory to register $t{r}.
 def loadvr(v, r):
     if str(v).isdigit():
         outfile.write('    li      $t%s, %d\n' % (r, v))
@@ -855,7 +856,7 @@ def loadvr(v, r):
                         'to a register')
 
 
-# Store the contents of register $t{r} to the memory allocated for variable v
+# Store the contents of register $t{r} to the memory allocated for variable 'v'.
 def storerv(r, v):
     try:
         tmp_entity, elevel = search_entity_by_name(v)
@@ -889,6 +890,8 @@ def storerv(r, v):
         perror_exit(6, 'storerv stores the contents of a register to memory')
 
 
+# Generate the assembly code for quad 'quad'. 'block_name' is the name
+# of the block that is currently translated into final code.
 def gen_mips_asm(quad, block_name):
     global actual_pars
     if str(quad.label) == '0':
@@ -1022,6 +1025,8 @@ def gen_mips_asm(quad, block_name):
             outfile.write('    jr      $ra\n')
 
 
+# Check if actual parameters of subprogram 'name'
+# are of the same type as typical parameters.
 def check_subprog_args(name):
     global actual_pars
     entity, level = search_entity_by_name(name)
@@ -1118,9 +1123,7 @@ def block(name):
     #print("LEAVING ", name)
     #print_scopes()
     for quad in quad_code[block_start_quad:]:
-        s = gen_mips_asm(quad, name)
-        if s != None:
-            print(s)
+        gen_mips_asm(quad, name)
     scopes.pop()
 
 
