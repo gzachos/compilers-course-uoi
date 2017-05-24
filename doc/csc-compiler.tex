@@ -453,7 +453,7 @@ serves to hold the information of a quadruple. This information is the following
 \end{itemize}
 
 \subsubsection{Global Data}
-The following global variables and data structures where used:
+The following global variables and data structures were used:
 \begin{itemize}
  \item \code{nextlabel}: Holds the label (non-negative integer) which will be used to reference
                          the next \code{Quad} to be generated.
@@ -495,6 +495,88 @@ were further defined:
                                       variable declaration.
  \item \code{generate\_c\_code\_file()}: Generates the file containing the ANSI C equivalent code of the
                                          intermediate code.
+\end{itemize}
+
+\newpage
+%----------------------------------------------------------------------------------------
+% Symbol Table
+%----------------------------------------------------------------------------------------
+
+\section{Symbol Table}
+The symbol table is a data structure used by the compiler, where each identifier (a.k.a. symbol) in a program's
+source code is associated with information relating to its declaration or appearance in the source.
+
+
+\subsection{Implementation Details}
+
+\subsubsection{Custom Classes}
+Implementing the symbol table, included definition of the following classes containing the corresponding attributes:
+
+\begin{itemize}
+ \item \code{Scope}
+    \begin{itemize}
+    \item \code{nested\_level}: Nested level of scope.
+    \item \code{enclosing\_scope}: Reference to a \code{Scope} object.
+    \item \code{entities}: List containing all the entities of the scope. New entities
+                           are appended at the tail of the list.
+    \item \code{tmp\_offset}: Holds the current offset that results after taking into account all parameters,
+                              variables (temporary and explicit). It will later be used to update a function's framelength.
+    \end{itemize}
+  \item \code{Argument}
+    \begin{itemize}
+    \item \code{par\_mode}: How the argument to the function is passed ("CV" or "REF").
+    \item \code{next\_arg}: Reference to the following \code{Argument} object.
+    \end{itemize}
+  \item \code{Entity}
+    \begin{itemize}
+    \item \code{name}: Entity name (identifier returned by lexical analyzer).
+    \item \code{etype}: Entity type ("VARIABLE", "FUNCTION","PARAMETER","TMPVAR").
+    \end{itemize}
+  \item \code{Variable} [Extends \code{Entity} Class]
+    \begin{itemize}
+    \item \code{offset}: Offset of variable with regard to frame start.
+    \end{itemize}
+  \item \code{Function} [Extends \code{Entity} Class]
+    \begin{itemize}
+    \item \code{ret\_type}: "int" for CiScal functions or "void" for proceedures.
+    \item \code{start\_quad}: Quad label of the first quad of the function.
+    \item \code{args}: A list containing all function arguments (\code{Argument} objects).
+    \item \code{framelength}: The function's framelength.
+    \end{itemize}
+  \item \code{Parameter} [Extends \code{Entity} Class]
+    \begin{itemize}
+    \item \code{par\_mode}: "in" and "inout" for \code{TokenType.INSYM} and \code{TokenType.INOUTSYM} respectively.
+    \item \code{offset}: Offset of parameter with regard to frame start.
+    \end{itemize}
+  \item \code{TmpVar} [Extends \code{Entity} Class]
+    \begin{itemize}
+    \item \code{offset}: Offset of (temporary) variable with regard to frame start.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Global Data}
+The following global variables and data structures were used:
+\begin{itemize}
+ \item \code{scopes}: A list holding \code{Scope} objects. Each new scope is appended at the end of the list.
+\end{itemize}
+
+\subsubsection{Function Definitions}
+The following functions were defined while implementing the symbol table:
+\begin{itemize}
+ \item \code{add\_new\_scope()}: Add a new scope.
+ \item \code{print\_scopes()}: Print current scope and its enclosing ones.
+ \item \code{add\_func\_entity(name)}: Add a new function entity.
+ \item \code{update\_func\_entity\_quad(name)}: Update the start quad label of a function entity.
+ \item \code{update\_func\_entity\_framelen(name, framelength)}: Update the framelength of a function entity.
+ \item \code{add\_param\_entity(name, par\_mode)}: Add a new parameter entity.
+ \item \code{add\_var\_entity(name)}: Add a new variable entity.
+ \item \code{add\_func\_arg(func\_name, par\_mode)}: Add a new function argument to a given function.
+ \item \code{search\_entity(name, etype)}: Search for an entity named \code{name} of type \code{etype}.
+ \item \code{search\_entity\_by\_name(name)}: Search for an entity named \code{name}.
+ \item \code{unique\_entity(name, etype, nested\_level)}: Check if entity named \code{name} of type \code{etype}
+                                                        at nested level \code{nested\_level} is redefined.
+ \item \code{var\_is\_param(name, nested\_level)}: Check if a variable entity named \code{name} already 
+                                                   exists as a parameter entity at nested level \code{nested\_level}.
 \end{itemize}
 
 
