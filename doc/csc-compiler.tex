@@ -92,59 +92,17 @@
 }
 
 \def\code#1{\texttt{#1}} % Added by GZZ
-%----------------------------------------------------------------------------------------
-%	DOCUMENT STRUCTURE COMMANDS
-%	Skip this unless you know what you're doing
-%----------------------------------------------------------------------------------------
-
-% Header and footer for when a page split occurs within a problem environment
-\newcommand{\enterProblemHeader}[1]{
-\nobreak\extramarks{#1}{#1 continued on next page\ldots}\nobreak
-\nobreak\extramarks{#1 (continued)}{#1 continued on next page\ldots}\nobreak
-}
-
-% Header and footer for when a page split occurs between problem environments
-\newcommand{\exitProblemHeader}[1]{
-\nobreak\extramarks{#1 (continued)}{#1 continued on next page\ldots}\nobreak
-\nobreak\extramarks{#1}{}\nobreak
-}
-
-\setcounter{secnumdepth}{0} % Removes default section numbers
-\newcounter{homeworkProblemCounter} % Creates a counter to keep track of the number of problems
-
-\newcommand{\homeworkProblemName}{}
-\newenvironment{homeworkProblem}[1][Problem \arabic{homeworkProblemCounter}]{ % Makes a new environment called homeworkProblem which takes 1 argument (custom name) but the default is "Problem #"
-\stepcounter{homeworkProblemCounter} % Increase counter for number of problems
-\renewcommand{\homeworkProblemName}{#1} % Assign \homeworkProblemName the name of the problem
-\section{\homeworkProblemName} % Make a section in the document with the custom problem count
-\enterProblemHeader{\homeworkProblemName} % Header and footer within the environment
-}{
-\exitProblemHeader{\homeworkProblemName} % Header and footer after the environment
-}
-
-\newcommand{\problemAnswer}[1]{ % Defines the problem answer command with the content as the only argument
-\noindent\framebox[\columnwidth][c]{\begin{minipage}{0.98\columnwidth}#1\end{minipage}} % Makes the box around the problem answer and puts the content inside
-}
-
-\newcommand{\homeworkSectionName}{}
-\newenvironment{homeworkSection}[1]{ % New environment for sections within homework problems, takes 1 argument - the name of the section
-\renewcommand{\homeworkSectionName}{#1} % Assign \homeworkSectionName to the name of the section from the environment argument
-\subsection{\homeworkSectionName} % Make a subsection with the custom name of the subsection
-\enterProblemHeader{\homeworkProblemName\ [\homeworkSectionName]} % Header and footer within the environment
-}{
-\enterProblemHeader{\homeworkProblemName} % Header and footer after the environment
-}
 
 %----------------------------------------------------------------------------------------
 %	NAME AND CLASS SECTION
 %----------------------------------------------------------------------------------------
 
 \newcommand{\hmwkTitle}{CiScal Compiler} % Assignment title
-\newcommand{\hmwkDueDate}{Monday,\ May\ 24,\ 2017} % Due date
+\newcommand{\hmwkDueDate}{Wednesday,\ May\ 24,\ 2017} % Due date
 \newcommand{\hmwkClass}{MYY802} % Course/class
 \newcommand{\hmwkClassTime}{} % Class/lecture time
 \newcommand{\hmwkClassInstructor}{George Manis} % Teacher/lecturer
-\newcommand{\hmwkAuthorName}{G.Zachos, A.Konstantinidis} % Your name
+\newcommand{\hmwkAuthorName}{George Z. Zachos} % Your name
 
 %----------------------------------------------------------------------------------------
 %	TITLE PAGE
@@ -159,7 +117,7 @@
 }
 
 \author{\textbf{\hmwkAuthorName}}
-\date{March 24, 2017} % Insert date here if you want it to appear below your name
+\date{May 24, 2017} % Insert date here if you want it to appear below your name
 
 %----------------------------------------------------------------------------------------
 
@@ -700,33 +658,5 @@ These are the following:
    syscall
   \end{lstlisting}
 \end{itemize}
-
-
-
-% \subsection{Tests}
-
-
-% Listing \ref{homework_example} shows a Python script.
-% \pythonscript{homework_example}{Sample Python Script With Highlighting}
-
-
-% \begin{center}
-% \includegraphics[width=0.75\columnwidth]{example_figure} % Example image
-% \end{center}
-
-
-%----------------------------------------------------------------------------------------
-%       PROBLEM 1
-%----------------------------------------------------------------------------------------
-
-% \begin{homeworkProblem}
-% 
-% 
-% \problemAnswer{
-% ans
-% }
-% \end{homeworkProblem}
-
-%----------------------------------------------------------------------------------------
 
 \end{document}
