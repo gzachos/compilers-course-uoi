@@ -603,7 +603,7 @@ These are the following:
   # ...
   .data        # The following data items should be stored in
                # the data segment.
-  newline: .ascizz "\n"   # Store the string "\n" in memory and
+  newline: .asciiz "\n"   # Store the string "\n" in memory and
                           # null-terminate it. Use label 'newline'
                           # to reference it.
   \end{lstlisting}
