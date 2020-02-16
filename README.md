@@ -17,6 +17,8 @@ Run: ```./csc.py``` to display usage information.
 
 ![mips_final_code.png](screenshots/mips_final_code.png)
 
+![csc-version-errors.png](screenshots/csc-version-errors.png)
+
 ## Developer
 [George Z. Zachos](https://gzachos.com)
 
